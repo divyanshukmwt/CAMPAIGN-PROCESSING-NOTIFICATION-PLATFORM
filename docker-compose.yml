@@ -1,0 +1,95 @@
+services:
+  mongodb:
+    image: mongo:7
+    container_name: campaign-mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: campaign-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --maxmemory-policy noeviction
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: campaign-api
+    restart: unless-stopped
+    command: npm run start:api
+    ports:
+      - "4000:4000"
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      MONGODB_URI: mongodb://mongodb:27017/campaign_platform
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_URL: redis://redis:6379
+      CORS_ORIGIN: http://localhost:5173
+      WORKER_CONCURRENCY: 10
+      CAMPAIGN_BATCH_SIZE: 250
+      DELIVERY_MAX_ATTEMPTS: 4
+      DELIVERY_BACKOFF_DELAY_MS: 1000
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    command: npm run start:worker
+    environment:
+      NODE_ENV: production
+      MONGODB_URI: mongodb://mongodb:27017/campaign_platform
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_URL: redis://redis:6379
+      WORKER_CONCURRENCY: 10
+      CAMPAIGN_BATCH_SIZE: 250
+      DELIVERY_MAX_ATTEMPTS: 4
+      DELIVERY_BACKOFF_DELAY_MS: 1000
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: campaign-frontend
+    restart: unless-stopped
+    ports:
+      - "5173:5173"
+    environment:
+      VITE_API_BASE_URL: http://localhost:4000/api
+    depends_on:
+      - api
+
+volumes:
+  mongodb_data:
+  redis_data:
