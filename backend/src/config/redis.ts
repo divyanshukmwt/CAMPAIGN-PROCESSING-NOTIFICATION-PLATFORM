@@ -58,6 +58,17 @@ export function getRedisClient(): Redis {
 }
 
 /**
+ * Returns the shared Redis client ONLY if it has already been initialized and is ready.
+ * Prevents unit tests or offline scripts from spawning background reconnect loops unintentionally.
+ */
+export function getReadyRedisClient(): Redis | null {
+  if (sharedRedisClient && sharedRedisClient.status === 'ready') {
+    return sharedRedisClient;
+  }
+  return null;
+}
+
+/**
  * BullMQ requires dedicated ioredis connections with maxRetriesPerRequest = null.
  */
 export function createBullMQConnection(label = 'bullmq-redis'): Redis {
