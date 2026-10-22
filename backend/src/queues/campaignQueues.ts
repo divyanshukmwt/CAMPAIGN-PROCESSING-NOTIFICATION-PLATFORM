@@ -37,10 +37,25 @@ export interface CampaignProgressEvent {
 let dispatchQueue: Queue<CampaignDispatchJobData> | null = null;
 let deliveryQueue: Queue<DeliveryJobData> | null = null;
 
-// In-memory fallback state for pause/cancel flags & test environments
+// In-memory fallback state for pause/cancel flags & test/offline environments
 const memoryCampaignState = new Map<string, CampaignStatus>();
+const memoryDispatchJobs = new Map<string, { jobId: string; data: CampaignDispatchJobData; delayMs: number }>();
+const memoryDeliveryJobs = new Map<string, { jobId: string; data: DeliveryJobData; opts: JobsOptions }>();
 export const localEventBus = new EventEmitter();
 localEventBus.setMaxListeners(100);
+
+export function getInMemoryQueueSnapshot() {
+  return {
+    dispatchJobs: Array.from(memoryDispatchJobs.values()),
+    deliveryJobs: Array.from(memoryDeliveryJobs.values()),
+  };
+}
+
+export function resetInMemoryQueues(): void {
+  memoryCampaignState.clear();
+  memoryDispatchJobs.clear();
+  memoryDeliveryJobs.clear();
+}
 
 /**
  * Lazily initializes and returns the BullMQ Campaign Dispatch Queue.
@@ -132,11 +147,16 @@ export async function enqueueCampaignDispatchJob(
       ? `dispatch_${data.campaignId}_${data.triggeredBy}_${Date.now()}`
       : `dispatch_${data.campaignId}`;
 
-  const queue = getCampaignDispatchQueue();
-  await queue.add('dispatch-campaign', data, {
-    jobId,
-    delay: delayMs,
-  });
+  memoryDispatchJobs.set(jobId, { jobId, data, delayMs });
+
+  const redis = getReadyRedisClient();
+  if (redis) {
+    const queue = getCampaignDispatchQueue();
+    await queue.add('dispatch-campaign', data, {
+      jobId,
+      delay: delayMs,
+    });
+  }
 
   logger.info(
     {
@@ -144,6 +164,7 @@ export async function enqueueCampaignDispatchJob(
       jobId,
       delayMs,
       triggeredBy: data.triggeredBy,
+      redisBacked: Boolean(redis),
     },
     'Enqueued campaign dispatch job in BullMQ'
   );
@@ -161,24 +182,34 @@ export async function enqueueDeliveryBatch(
 ): Promise<number> {
   if (jobs.length === 0) return 0;
 
-  const queue = getDeliveryQueue();
+  const redis = getReadyRedisClient();
   const safeChunkSize = Math.max(1, chunkSize);
   let enqueuedCount = 0;
 
   for (let i = 0; i < jobs.length; i += safeChunkSize) {
     const slice = jobs.slice(i, i + safeChunkSize);
-    const bulkPayload = slice.map((item) => ({
-      name: 'send-notification',
-      data: item,
-      opts: buildDeliveryJobOptions({
+    const bulkPayload = slice.map((item) => {
+      const opts = buildDeliveryJobOptions({
         deliveryId: item.deliveryId,
         maxAttempts: item.maxAttempts,
         backoffDelayMs: item.backoffDelayMs,
         manualRetryEpoch: item.manualRetryEpoch,
-      }),
-    }));
+      });
+      const jobId = String(opts.jobId);
+      if (!memoryDeliveryJobs.has(jobId)) {
+        memoryDeliveryJobs.set(jobId, { jobId, data: item, opts });
+      }
+      return {
+        name: 'send-notification',
+        data: item,
+        opts,
+      };
+    });
 
-    await queue.addBulk(bulkPayload);
+    if (redis) {
+      const queue = getDeliveryQueue();
+      await queue.addBulk(bulkPayload);
+    }
     enqueuedCount += slice.length;
   }
 
