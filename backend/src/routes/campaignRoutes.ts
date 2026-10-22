@@ -16,6 +16,10 @@ import {
   updateCampaign,
 } from '../services/campaignService';
 import { resolveTenantId } from '../services/cacheService';
+import {
+  CampaignProgressEvent,
+  localEventBus,
+} from '../queues/campaignQueues';
 import { extractIdempotencyKey } from '../utils/idempotency';
 import {
   parseCsvRecipients,
@@ -187,6 +191,48 @@ router.post(
     }
   }
 );
+
+/**
+ * GET /api/campaigns/events
+ * Server-Sent Events (SSE) stream for live campaign progress updates (Module 6).
+ */
+router.get('/events', (req: Request, res: Response) => {
+  const tenantId = (
+    (req.query.tenantId as string) ||
+    resolveTenantId(req)
+  ).trim().toLowerCase();
+
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache, no-transform');
+  res.setHeader('Connection', 'keep-alive');
+  res.flushHeaders?.();
+
+  res.write(
+    `data: ${JSON.stringify({
+      type: 'connected',
+      tenantId,
+      timestamp: new Date().toISOString(),
+    })}\n\n`
+  );
+
+  const onEvent = (event: CampaignProgressEvent) => {
+    if (!event.tenantId || event.tenantId.toLowerCase() === tenantId) {
+      res.write(`data: ${JSON.stringify(event)}\n\n`);
+    }
+  };
+
+  localEventBus.on('campaign_event', onEvent);
+
+  const keepAliveTimer = setInterval(() => {
+    res.write(': keepalive\n\n');
+  }, 15000);
+  keepAliveTimer.unref();
+
+  req.on('close', () => {
+    clearInterval(keepAliveTimer);
+    localEventBus.off('campaign_event', onEvent);
+  });
+});
 
 /**
  * GET /api/campaigns/summary

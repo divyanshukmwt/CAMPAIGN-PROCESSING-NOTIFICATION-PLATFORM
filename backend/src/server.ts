@@ -2,8 +2,14 @@ import http from 'http';
 import { createApp } from './app';
 import { connectDatabase, disconnectDatabase } from './config/database';
 import { env } from './config/env';
-import { closeAllRedisConnections, getRedisClient } from './config/redis';
-import { closeQueues } from './queues/campaignQueues';
+import { closeAllRedisConnections, createRedisClient, getRedisClient } from './config/redis';
+import {
+  CAMPAIGN_EVENTS_CHANNEL,
+  CampaignProgressEvent,
+  closeQueues,
+  localEventBus,
+} from './queues/campaignQueues';
+import { invalidateTenantCampaignCache } from './services/cacheService';
 import { logger } from './utils/logger';
 
 async function bootstrapServer() {
@@ -11,6 +17,26 @@ async function bootstrapServer() {
     await connectDatabase();
     // Initialize shared Redis client
     getRedisClient();
+
+    // Subscribe to Redis Pub/Sub channel so events emitted by the separate Worker process
+    // are forwarded to SSE clients and trigger API cache invalidation
+    const subscriber = createRedisClient('redis-pubsub-subscriber', false);
+    subscriber.subscribe(CAMPAIGN_EVENTS_CHANNEL).catch((err) => {
+      logger.warn({ err: err.message }, 'Failed to subscribe to campaign events channel');
+    });
+    subscriber.on('message', (channel, message) => {
+      if (channel === CAMPAIGN_EVENTS_CHANNEL) {
+        try {
+          const parsed = JSON.parse(message) as CampaignProgressEvent;
+          if (parsed.tenantId) {
+            void invalidateTenantCampaignCache(parsed.tenantId, parsed.campaignId);
+          }
+          localEventBus.emit('campaign_event', parsed);
+        } catch {
+          // Ignore malformed pubsub payload
+        }
+      }
+    });
 
     const app = createApp();
     const server = http.createServer(app);

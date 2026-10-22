@@ -88,7 +88,14 @@ export async function getRedisHealth(): Promise<{
   latencyMs: number | null;
 }> {
   try {
-    const client = getRedisClient();
+    const client = getReadyRedisClient();
+    if (!client) {
+      return {
+        connected: false,
+        status: sharedRedisClient?.status || 'disconnected',
+        latencyMs: null,
+      };
+    }
     const start = Date.now();
     const pong = await client.ping();
     const latencyMs = Date.now() - start;
