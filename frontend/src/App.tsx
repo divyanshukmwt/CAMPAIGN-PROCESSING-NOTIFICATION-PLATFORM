@@ -1,16 +1,45 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   API_BASE_URL,
+  fetchCampaigns,
+  fetchDashboardSummary,
   fetchSystemHealth,
   getTenantId,
+  retryCampaignDeliveries,
   setTenantId,
   subscribeApiTelemetry,
+  triggerCampaignAction,
 } from './api/client';
+import { CampaignListView } from './components/CampaignListView';
+import { DashboardSummaryCards } from './components/DashboardSummaryCards';
 import { SystemHealthHeader } from './components/SystemHealthHeader';
-import { ApiTelemetryMeta, SystemHealth } from './types/campaign';
+import {
+  ApiTelemetryMeta,
+  Campaign,
+  DashboardSummary,
+  SystemHealth,
+} from './types/campaign';
 
 export function App() {
   const [health, setHealth] = useState<SystemHealth | null>(null);
+  const [summary, setSummary] = useState<DashboardSummary | null>(null);
+  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [channelFilter, setChannelFilter] = useState('all');
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
+
+  const [selectedCampaign, setSelectedCampaign] = useState<Campaign | null>(
+    null
+  );
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
+
   const [telemetry, setTelemetry] = useState<ApiTelemetryMeta>({
     lastCacheStatus: null,
     rateLimitLimit: null,
@@ -20,33 +49,88 @@ export function App() {
   const [sseConnected, setSseConnected] = useState(false);
   const [tenant, setTenant] = useState(getTenantId());
 
-  const loadHealth = async () => {
-    try {
-      const h = await fetchSystemHealth();
-      setHealth(h);
-    } catch {
-      // Non-fatal if backend is not yet started
-    }
-  };
+  const refreshAll = useCallback(
+    async (silent = false) => {
+      if (!silent) setLoading(true);
+      try {
+        const [healthRes, summaryRes, listRes] = await Promise.all([
+          fetchSystemHealth().catch(() => null),
+          fetchDashboardSummary(),
+          fetchCampaigns({
+            page,
+            limit: 8,
+            status: statusFilter,
+            channel: channelFilter,
+            search,
+          }),
+        ]);
+
+        if (healthRes) setHealth(healthRes);
+        setSummary(summaryRes);
+        setCampaigns(listRes.items);
+        setTotalPages(listRes.pagination.totalPages);
+        setTotalItems(listRes.pagination.totalItems);
+        setError(null);
+      } catch (err) {
+        setError((err as Error).message || 'Failed to load campaign data');
+      } finally {
+        if (!silent) setLoading(false);
+      }
+    },
+    [page, statusFilter, channelFilter, search]
+  );
 
   useEffect(() => {
     const unsub = subscribeApiTelemetry(setTelemetry);
-    void loadHealth();
+    void refreshAll(false);
     return unsub;
-  }, [tenant]);
+  }, [tenant, refreshAll]);
 
+  // Real-time Server-Sent Events (SSE) + periodic 2.5s polling while active campaigns exist
   useEffect(() => {
     const es = new EventSource(
       `${API_BASE_URL}/campaigns/events?tenantId=${encodeURIComponent(tenant)}`
     );
     es.onopen = () => setSseConnected(true);
+    es.onmessage = () => {
+      void refreshAll(true);
+    };
     es.onerror = () => setSseConnected(false);
-    return () => es.close();
-  }, [tenant]);
+
+    const pollInterval = setInterval(() => {
+      void refreshAll(true);
+    }, 2500);
+
+    return () => {
+      es.close();
+      clearInterval(pollInterval);
+    };
+  }, [tenant, refreshAll]);
 
   const handleTenantChange = (nextTenant: string) => {
     setTenantId(nextTenant);
     setTenant(nextTenant);
+    setPage(1);
+    setSelectedCampaign(null);
+  };
+
+  const handleAction = async (
+    campaignId: string,
+    action: 'start' | 'pause' | 'resume' | 'cancel' | 'retry'
+  ) => {
+    setActionLoadingId(campaignId);
+    try {
+      if (action === 'retry') {
+        await retryCampaignDeliveries(campaignId);
+      } else {
+        await triggerCampaignAction(campaignId, action);
+      }
+      await refreshAll(true);
+    } catch (err) {
+      setError((err as Error).message || `Failed to ${action} campaign`);
+    } finally {
+      setActionLoadingId(null);
+    }
   };
 
   return (
@@ -57,13 +141,46 @@ export function App() {
         sseConnected={sseConnected}
         tenantId={tenant}
         onTenantChange={handleTenantChange}
-        onRefresh={() => void loadHealth()}
-        onOpenCreateModal={() => {}}
+        onRefresh={() => void refreshAll(false)}
+        onOpenCreateModal={() => setIsCreateModalOpen(true)}
       />
-      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-6 text-sm text-slate-300">
-          Monitoring Dashboard Shell Initialized — Campaign List, Creation Wizard, and Delivery Inspector will be mounted in Milestones 15–17.
-        </div>
+
+      <main className="mx-auto max-w-7xl space-y-6 px-4 py-6 sm:px-6 lg:px-8">
+        <DashboardSummaryCards summary={summary} />
+
+        <CampaignListView
+          campaigns={campaigns}
+          loading={loading}
+          error={error}
+          search={search}
+          onSearchChange={(val) => {
+            setSearch(val);
+            setPage(1);
+          }}
+          statusFilter={statusFilter}
+          onStatusFilterChange={(val) => {
+            setStatusFilter(val);
+            setPage(1);
+          }}
+          channelFilter={channelFilter}
+          onChannelFilterChange={(val) => {
+            setChannelFilter(val);
+            setPage(1);
+          }}
+          page={page}
+          totalPages={totalPages}
+          totalItems={totalItems}
+          onPageChange={setPage}
+          onSelectCampaign={setSelectedCampaign}
+          onAction={handleAction}
+          actionLoadingId={actionLoadingId}
+          onOpenCreateModal={() => setIsCreateModalOpen(true)}
+          onRetryFetch={() => void refreshAll(false)}
+        />
+
+        {(selectedCampaign || isCreateModalOpen) && (
+          <div className="hidden" aria-hidden="true" />
+        )}
       </main>
     </div>
   );
