@@ -5,7 +5,7 @@ import {
   CampaignStatus,
   ICampaign,
 } from '../models/Campaign';
-import { DeliveryModel } from '../models/Delivery';
+import { DeliveryModel, IDelivery } from '../models/Delivery';
 import {
   buildCampaignDetailCacheKey,
   buildCampaignListCacheKey,
@@ -14,6 +14,8 @@ import {
   invalidateTenantCampaignCache,
   setCachedJson,
 } from './cacheService';
+import { clearWorkerCampaignMetaCache } from './deliveryProcessor';
+import { clearProviderIdempotencyKey } from './mockProvider';
 import {
   enqueueCampaignDispatchJob,
   publishCampaignEvent,
@@ -530,4 +532,463 @@ export async function updateCampaign(
   });
 
   return campaign;
+}
+
+/**
+ * Starts a draft or scheduled campaign immediately.
+ */
+export async function startCampaign(
+  tenantIdInput: string,
+  campaignId: string,
+  skipQueueEnqueue = false
+): Promise<ICampaign> {
+  if (!mongoose.Types.ObjectId.isValid(campaignId)) {
+    throw new AppError(400, 'INVALID_CAMPAIGN_ID', 'Invalid campaign ID format.');
+  }
+
+  const tenantId = tenantIdInput || env.DEFAULT_TENANT_ID;
+  const campaign = await CampaignModel.findOne({ _id: campaignId, tenantId });
+
+  if (!campaign) {
+    throw new AppError(404, 'CAMPAIGN_NOT_FOUND', `Campaign ${campaignId} not found.`);
+  }
+
+  if (!['draft', 'scheduled'].includes(campaign.status)) {
+    throw new AppError(
+      409,
+      'INVALID_STATE_TRANSITION',
+      `Cannot start campaign from status '${campaign.status}'.`
+    );
+  }
+
+  campaign.status = 'processing';
+  campaign.startedAt = new Date();
+  await campaign.save();
+
+  clearWorkerCampaignMetaCache(campaignId);
+  await setCampaignRuntimeState(campaignId, 'processing');
+  await invalidateTenantCampaignCache(tenantId, campaignId);
+
+  if (!skipQueueEnqueue) {
+    try {
+      await enqueueCampaignDispatchJob({
+        campaignId,
+        tenantId,
+        batchSize: campaign.config.batchSize,
+        triggeredBy: 'start',
+      });
+    } catch (err) {
+      logger.warn({ campaignId, err: (err as Error).message }, 'Dispatch enqueue warning on start');
+    }
+  }
+
+  await publishCampaignEvent({
+    type: 'campaign_updated',
+    campaignId,
+    tenantId,
+    status: 'processing',
+    timestamp: new Date().toISOString(),
+  });
+
+  return campaign;
+}
+
+/**
+ * Pauses an active ('processing' or 'scheduled') campaign.
+ * Workers check the Redis runtime state before each delivery and defer remaining queued items.
+ */
+export async function pauseCampaign(
+  tenantIdInput: string,
+  campaignId: string
+): Promise<ICampaign> {
+  if (!mongoose.Types.ObjectId.isValid(campaignId)) {
+    throw new AppError(400, 'INVALID_CAMPAIGN_ID', 'Invalid campaign ID format.');
+  }
+
+  const tenantId = tenantIdInput || env.DEFAULT_TENANT_ID;
+  const campaign = await CampaignModel.findOne({ _id: campaignId, tenantId });
+
+  if (!campaign) {
+    throw new AppError(404, 'CAMPAIGN_NOT_FOUND', `Campaign ${campaignId} not found.`);
+  }
+
+  if (!['processing', 'scheduled'].includes(campaign.status)) {
+    throw new AppError(
+      409,
+      'INVALID_STATE_TRANSITION',
+      `Cannot pause campaign when status is '${campaign.status}'.`
+    );
+  }
+
+  campaign.status = 'paused';
+  campaign.pausedAt = new Date();
+  await campaign.save();
+
+  clearWorkerCampaignMetaCache(campaignId);
+  await setCampaignRuntimeState(campaignId, 'paused');
+  await invalidateTenantCampaignCache(tenantId, campaignId);
+
+  await publishCampaignEvent({
+    type: 'campaign_updated',
+    campaignId,
+    tenantId,
+    status: 'paused',
+    timestamp: new Date().toISOString(),
+  });
+
+  return campaign;
+}
+
+/**
+ * Resumes a paused campaign and re-dispatches all remaining queued deliveries.
+ */
+export async function resumeCampaign(
+  tenantIdInput: string,
+  campaignId: string,
+  skipQueueEnqueue = false
+): Promise<ICampaign> {
+  if (!mongoose.Types.ObjectId.isValid(campaignId)) {
+    throw new AppError(400, 'INVALID_CAMPAIGN_ID', 'Invalid campaign ID format.');
+  }
+
+  const tenantId = tenantIdInput || env.DEFAULT_TENANT_ID;
+  const campaign = await CampaignModel.findOne({ _id: campaignId, tenantId });
+
+  if (!campaign) {
+    throw new AppError(404, 'CAMPAIGN_NOT_FOUND', `Campaign ${campaignId} not found.`);
+  }
+
+  if (campaign.status !== 'paused') {
+    throw new AppError(
+      409,
+      'INVALID_STATE_TRANSITION',
+      `Cannot resume campaign when status is '${campaign.status}'.`
+    );
+  }
+
+  campaign.status = 'processing';
+  campaign.pausedAt = null;
+  if (!campaign.startedAt) {
+    campaign.startedAt = new Date();
+  }
+  await campaign.save();
+
+  clearWorkerCampaignMetaCache(campaignId);
+  await setCampaignRuntimeState(campaignId, 'processing');
+  await invalidateTenantCampaignCache(tenantId, campaignId);
+
+  if (!skipQueueEnqueue) {
+    try {
+      await enqueueCampaignDispatchJob({
+        campaignId,
+        tenantId,
+        batchSize: campaign.config.batchSize,
+        triggeredBy: 'resume',
+      });
+    } catch (err) {
+      logger.warn({ campaignId, err: (err as Error).message }, 'Dispatch enqueue warning on resume');
+    }
+  }
+
+  await publishCampaignEvent({
+    type: 'campaign_updated',
+    campaignId,
+    tenantId,
+    status: 'processing',
+    timestamp: new Date().toISOString(),
+  });
+
+  return campaign;
+}
+
+/**
+ * Cancels a campaign before completion, marking all remaining queued deliveries as 'skipped'
+ * with failureType = 'cancelled' and updating campaign statistics accurately.
+ */
+export async function cancelCampaign(
+  tenantIdInput: string,
+  campaignId: string
+): Promise<ICampaign> {
+  if (!mongoose.Types.ObjectId.isValid(campaignId)) {
+    throw new AppError(400, 'INVALID_CAMPAIGN_ID', 'Invalid campaign ID format.');
+  }
+
+  const tenantId = tenantIdInput || env.DEFAULT_TENANT_ID;
+  const campaign = await CampaignModel.findOne({ _id: campaignId, tenantId });
+
+  if (!campaign) {
+    throw new AppError(404, 'CAMPAIGN_NOT_FOUND', `Campaign ${campaignId} not found.`);
+  }
+
+  if (['completed', 'partially_failed', 'failed', 'cancelled'].includes(campaign.status)) {
+    throw new AppError(
+      409,
+      'INVALID_STATE_TRANSITION',
+      `Cannot cancel campaign that is already '${campaign.status}'.`
+    );
+  }
+
+  // 1. Immediately set Redis state to 'cancelled' so workers stop picking up deliveries
+  await setCampaignRuntimeState(campaignId, 'cancelled');
+  clearWorkerCampaignMetaCache(campaignId);
+
+  // 2. Bulk transition all remaining 'queued' deliveries to 'skipped'
+  const updateResult = await DeliveryModel.updateMany(
+    {
+      campaignId: campaign._id,
+      status: 'queued',
+    },
+    {
+      $set: {
+        status: 'skipped',
+        failureType: 'cancelled',
+        lastError: 'Campaign cancelled by administrator before delivery',
+        errorCode: 'CAMPAIGN_CANCELLED',
+        completedAt: new Date(),
+      },
+    }
+  );
+
+  const cancelledCount = updateResult.modifiedCount || 0;
+
+  // 3. Atomically update campaign status and counters
+  const updatedCampaign = await CampaignModel.findOneAndUpdate(
+    { _id: campaign._id },
+    {
+      $set: {
+        status: 'cancelled',
+        cancelledAt: new Date(),
+        completedAt: new Date(),
+      },
+      $inc: {
+        'stats.queued': -cancelledCount,
+        'stats.skipped': cancelledCount,
+      },
+    },
+    { new: true }
+  );
+
+  const finalDoc = updatedCampaign || campaign;
+  await invalidateTenantCampaignCache(tenantId, campaignId);
+
+  await publishCampaignEvent({
+    type: 'campaign_updated',
+    campaignId,
+    tenantId,
+    status: 'cancelled',
+    timestamp: new Date().toISOString(),
+  });
+
+  return finalDoc;
+}
+
+export interface ListDeliveriesParams {
+  tenantId: string;
+  campaignId: string;
+  page?: number;
+  limit?: number;
+  status?: string;
+  failureType?: string;
+  search?: string;
+}
+
+/**
+ * Lists deliveries for a campaign with filtering by status ('failed', 'skipped', 'succeeded', etc.),
+ * failureType ('permanent', 'transient', etc.), recipient search, and pagination (Modules 2, 5 & 6).
+ */
+export async function listCampaignDeliveries(params: ListDeliveriesParams) {
+  if (!mongoose.Types.ObjectId.isValid(params.campaignId)) {
+    throw new AppError(400, 'INVALID_CAMPAIGN_ID', 'Invalid campaign ID format.');
+  }
+
+  const tenantId = params.tenantId || env.DEFAULT_TENANT_ID;
+  const campaignExists = await CampaignModel.exists({
+    _id: params.campaignId,
+    tenantId,
+  });
+
+  if (!campaignExists) {
+    throw new AppError(404, 'CAMPAIGN_NOT_FOUND', `Campaign ${params.campaignId} not found.`);
+  }
+
+  const page = Math.max(1, params.page || 1);
+  const limit = Math.min(200, Math.max(1, params.limit || 25));
+
+  const filter: Record<string, unknown> = {
+    campaignId: new mongoose.Types.ObjectId(params.campaignId),
+  };
+
+  if (params.status && params.status !== 'all') {
+    filter.status = params.status;
+  }
+
+  if (params.failureType && params.failureType !== 'all') {
+    filter.failureType = params.failureType;
+  }
+
+  if (params.search && params.search.trim()) {
+    const escaped = params.search.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    filter.$or = [
+      { recipient: { $regex: escaped, $options: 'i' } },
+      { recipientName: { $regex: escaped, $options: 'i' } },
+      { deliveryId: { $regex: escaped, $options: 'i' } },
+      { lastError: { $regex: escaped, $options: 'i' } },
+    ];
+  }
+
+  const [items, totalItems] = await Promise.all([
+    DeliveryModel.find(filter)
+      .sort({ updatedAt: -1, _id: 1 })
+      .skip((page - 1) * limit)
+      .limit(limit)
+      .lean<IDelivery[]>(),
+    DeliveryModel.countDocuments(filter),
+  ]);
+
+  return {
+    items,
+    pagination: {
+      page,
+      limit,
+      totalItems,
+      totalPages: Math.max(1, Math.ceil(totalItems / limit)),
+    },
+  };
+}
+
+export interface RetryDeliveriesInput {
+  tenantId: string;
+  campaignId: string;
+  deliveryIds?: string[];
+  OverrideRecipientSimulateFailureToNull?: boolean;
+  skipQueueEnqueue?: boolean;
+}
+
+/**
+ * Manually reprocesses permanently or transiently failed deliveries (selected deliveryIds or all failed)
+ * without double-counting campaign statistics (Modules 2, 5 & 6).
+ */
+export async function retryFailedDeliveries(input: RetryDeliveriesInput): Promise<{
+  campaign: ICampaign;
+  retriedCount: number;
+  retriedDeliveryIds: string[];
+}> {
+  if (!mongoose.Types.ObjectId.isValid(input.campaignId)) {
+    throw new AppError(400, 'INVALID_CAMPAIGN_ID', 'Invalid campaign ID format.');
+  }
+
+  const tenantId = input.tenantId || env.DEFAULT_TENANT_ID;
+  const campaign = await CampaignModel.findOne({
+    _id: input.campaignId,
+    tenantId,
+  });
+
+  if (!campaign) {
+    throw new AppError(404, 'CAMPAIGN_NOT_FOUND', `Campaign ${input.campaignId} not found.`);
+  }
+
+  const deliveryQuery: Record<string, unknown> = {
+    campaignId: campaign._id,
+    status: 'failed',
+  };
+
+  if (Array.isArray(input.deliveryIds) && input.deliveryIds.length > 0) {
+    deliveryQuery.deliveryId = { $in: input.deliveryIds };
+  }
+
+  const failedDocs = await DeliveryModel.find(deliveryQuery)
+    .select('_id deliveryId attemptsMade maxAttempts')
+    .lean();
+
+  if (failedDocs.length === 0) {
+    return {
+      campaign,
+      retriedCount: 0,
+      retriedDeliveryIds: [],
+    };
+  }
+
+  const targetIds = failedDocs.map((d) => d.deliveryId);
+
+  // Clear provider idempotency cache for these deliveries so manual reprocess executes fresh
+  await Promise.all(targetIds.map((id) => clearProviderIdempotencyKey(id)));
+
+  // Atomically transition matched deliveries from 'failed' -> 'queued' and grant fresh attempts
+  const updateResult = await DeliveryModel.updateMany(
+    {
+      campaignId: campaign._id,
+      deliveryId: { $in: targetIds },
+      status: 'failed',
+    },
+    {
+      $set: {
+        status: 'queued',
+        failureType: null,
+        lastError: null,
+        errorCode: null,
+        completedAt: null,
+      },
+      $inc: {
+        maxAttempts: campaign.config.maxAttempts || 4,
+      },
+    }
+  );
+
+  const retriedCount = updateResult.modifiedCount || 0;
+
+  if (retriedCount > 0) {
+    const updatedCampaign = await CampaignModel.findOneAndUpdate(
+      { _id: campaign._id },
+      {
+        $set: {
+          status: 'processing',
+          completedAt: null,
+        },
+        $inc: {
+          'stats.failed': -retriedCount,
+          'stats.queued': retriedCount,
+        },
+      },
+      { new: true }
+    );
+
+    if (updatedCampaign) {
+      campaign.status = updatedCampaign.status;
+      campaign.stats = updatedCampaign.stats;
+    }
+
+    clearWorkerCampaignMetaCache(input.campaignId);
+    await setCampaignRuntimeState(input.campaignId, 'processing');
+    await invalidateTenantCampaignCache(tenantId, input.campaignId);
+
+    if (!input.skipQueueEnqueue) {
+      try {
+        await enqueueCampaignDispatchJob({
+          campaignId: input.campaignId,
+          tenantId,
+          batchSize: campaign.config.batchSize,
+          triggeredBy: 'retry',
+        });
+      } catch (err) {
+        logger.warn(
+          { campaignId: input.campaignId, err: (err as Error).message },
+          'Dispatch enqueue warning on retry'
+        );
+      }
+    }
+
+    await publishCampaignEvent({
+      type: 'campaign_updated',
+      campaignId: input.campaignId,
+      tenantId,
+      status: 'processing',
+      timestamp: new Date().toISOString(),
+    });
+  }
+
+  return {
+    campaign,
+    retriedCount,
+    retriedDeliveryIds: targetIds.slice(0, retriedCount),
+  };
 }

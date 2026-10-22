@@ -3,10 +3,16 @@ import multer from 'multer';
 import { z } from 'zod';
 import {
   AppError,
+  cancelCampaign,
   createCampaign,
   getCampaignById,
   getDashboardSummary,
+  listCampaignDeliveries,
   listCampaigns,
+  pauseCampaign,
+  resumeCampaign,
+  retryFailedDeliveries,
+  startCampaign,
   updateCampaign,
 } from '../services/campaignService';
 import { resolveTenantId } from '../services/cacheService';
@@ -260,6 +266,131 @@ router.patch(
       const updates = updateCampaignSchema.parse(req.body);
       const campaign = await updateCampaign(tenantId, req.params.id, updates);
       res.status(200).json({ campaign });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+/**
+ * POST /api/campaigns/:id/start
+ * Launches a draft or scheduled campaign immediately.
+ */
+router.post(
+  '/:id/start',
+  writeRateLimiter,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const tenantId = resolveTenantId(req);
+      const campaign = await startCampaign(tenantId, req.params.id);
+      res.status(200).json({ campaign });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+/**
+ * POST /api/campaigns/:id/pause
+ * Pauses a processing or scheduled campaign.
+ */
+router.post(
+  '/:id/pause',
+  writeRateLimiter,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const tenantId = resolveTenantId(req);
+      const campaign = await pauseCampaign(tenantId, req.params.id);
+      res.status(200).json({ campaign });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+/**
+ * POST /api/campaigns/:id/resume
+ * Resumes a paused campaign and re-dispatches remaining queued deliveries.
+ */
+router.post(
+  '/:id/resume',
+  writeRateLimiter,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const tenantId = resolveTenantId(req);
+      const campaign = await resumeCampaign(tenantId, req.params.id);
+      res.status(200).json({ campaign });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+/**
+ * POST /api/campaigns/:id/cancel
+ * Cancels a campaign before completion and marks remaining queued deliveries as skipped.
+ */
+router.post(
+  '/:id/cancel',
+  writeRateLimiter,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const tenantId = resolveTenantId(req);
+      const campaign = await cancelCampaign(tenantId, req.params.id);
+      res.status(200).json({ campaign });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+/**
+ * GET /api/campaigns/:id/deliveries
+ * Paginated inspection of campaign deliveries (filterable by status=failed/skipped/succeeded, failureType, search).
+ */
+router.get(
+  '/:id/deliveries',
+  readRateLimiter,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const tenantId = resolveTenantId(req);
+      const result = await listCampaignDeliveries({
+        tenantId,
+        campaignId: req.params.id,
+        page: req.query.page ? Number(req.query.page) : 1,
+        limit: req.query.limit ? Number(req.query.limit) : 25,
+        status: req.query.status as string | undefined,
+        failureType: req.query.failureType as string | undefined,
+        search: req.query.search as string | undefined,
+      });
+      res.status(200).json(result);
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+const retryDeliveriesSchema = z.object({
+  deliveryIds: z.array(z.string()).optional(),
+});
+
+/**
+ * POST /api/campaigns/:id/retry
+ * Manually reprocesses failed deliveries (all failed or selected deliveryIds).
+ */
+router.post(
+  '/:id/retry',
+  writeRateLimiter,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const tenantId = resolveTenantId(req);
+      const parsed = retryDeliveriesSchema.parse(req.body || {});
+      const result = await retryFailedDeliveries({
+        tenantId,
+        campaignId: req.params.id,
+        deliveryIds: parsed.deliveryIds,
+      });
+      res.status(200).json(result);
     } catch (err) {
       next(err);
     }
