@@ -8,14 +8,14 @@ A scalable, fault-tolerant **Campaign Processing & Notification Platform** built
 
 ```mermaid
 flowchart LR
-    Client["React + TypeScript Dashboard"] -->|REST + Multipart CSV| API["Express API Process\n(src/server.ts)"]
-    API -->|SSE Stream + Polling| Client
-    API -->|CRUD & Durable Records| Mongo[("MongoDB 7\n(campaigns & deliveries)")]
-    API -->|Versioned Cache & Lua Rate Limit| Redis[("Redis 7\n(Cache, Rate Limit, BullMQ)")]
-    API -->|Enqueue Dispatch Job| Redis
-    Worker["Separate Worker Process\n(src/worker.ts)"] <-->|campaign-dispatch & delivery-queue| Redis
-    Worker -->|Atomic CAS State Transitions| Mongo
-    Worker -->|Idempotent Send (Idempotency-Key)| Provider["Mock Notification Gateway\n(Redis-backed Deduplication)"]
+    Client["React + TypeScript Dashboard"] -->|"REST + Multipart CSV"| API["Express API Process (src/server.ts)"]
+    API -->|"SSE Stream + Polling"| Client
+    API -->|"CRUD & Durable Records"| Mongo[("MongoDB 7 (campaigns & deliveries)")]
+    API -->|"Versioned Cache & Lua Rate Limit"| Redis[("Redis 7 (Cache, Rate Limit, BullMQ)")]
+    API -->|"Enqueue Dispatch Job"| Redis
+    Worker["Separate Worker Process (src/worker.ts)"] <-->|"campaign-dispatch & delivery-queue"| Redis
+    Worker -->|"Atomic CAS State Transitions"| Mongo
+    Worker -->|"Idempotent Send (Idempotency-Key)"| Provider["Mock Notification Gateway (Redis Deduplication)"]
 ```
 
 ### Key Architectural Highlights
