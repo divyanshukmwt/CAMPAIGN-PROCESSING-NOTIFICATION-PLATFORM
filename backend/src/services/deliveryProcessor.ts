@@ -272,12 +272,16 @@ export async function processDeliveryJob(
   }
 
   // 2. Atomically claim the delivery record in MongoDB
-  // Only 'queued' (or 'processing' from a crashed/stalled worker) can be claimed.
-  // Terminal states ('succeeded', 'failed', 'skipped') CANNOT be claimed!
+  // Only 'queued' (or a stale 'processing' record from a crashed worker whose lock expired) can be claimed.
+  // Active in-flight 'processing' records and terminal states ('succeeded', 'failed', 'skipped') CANNOT be claimed!
+  const staleProcessingCutoff = new Date(Date.now() - 15000);
   const priorDelivery = await DeliveryModel.findOneAndUpdate(
     {
       deliveryId: data.deliveryId,
-      status: { $in: ['queued', 'processing'] },
+      $or: [
+        { status: 'queued' },
+        { status: 'processing', lastAttemptAt: { $lte: staleProcessingCutoff } },
+      ],
     },
     {
       $set: {

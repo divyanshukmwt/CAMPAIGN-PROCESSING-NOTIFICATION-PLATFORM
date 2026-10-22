@@ -10,6 +10,10 @@ import {
   localEventBus,
 } from './queues/campaignQueues';
 import { invalidateTenantCampaignCache } from './services/cacheService';
+import {
+  startFallbackProcessorIfRedisOffline,
+  stopFallbackProcessor,
+} from './services/embeddedWorkerRunner';
 import { logger } from './utils/logger';
 
 async function bootstrapServer() {
@@ -46,10 +50,12 @@ async function bootstrapServer() {
         { port: env.PORT, env: env.NODE_ENV },
         `Express API server listening on http://localhost:${env.PORT}`
       );
+      startFallbackProcessorIfRedisOffline();
     });
 
     const shutdown = async (signal: string) => {
       logger.info({ signal }, 'Shutting down Express API server gracefully...');
+      stopFallbackProcessor();
       server.close(async () => {
         await closeQueues();
         await closeAllRedisConnections();
