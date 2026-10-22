@@ -1,0 +1,190 @@
+{
+  "info": {
+    "name": "Campaign Processing & Notification Platform API",
+    "_postman_id": "9b8e7f6a-5c4d-4e3b-8a2f-1d0c9b8a7e6f",
+    "description": "Complete REST & SSE API collection for the Campaign Processing & Notification Platform (Modules 1-7).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:4000/api"
+    },
+    {
+      "key": "tenantId",
+      "value": "default-tenant"
+    },
+    {
+      "key": "campaignId",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Health & Observability",
+      "item": [
+        {
+          "name": "GET System Health (Mongo, Redis, Queues, Workers, Cache, Provider)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "X-Tenant-ID", "value": "{{tenantId}}" }
+            ],
+            "url": "{{baseUrl}}/health"
+          }
+        },
+        {
+          "name": "GET BullMQ Failed Jobs Inspector",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "X-Tenant-ID", "value": "{{tenantId}}" }
+            ],
+            "url": "{{baseUrl}}/health/failed-jobs?limit=25"
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Campaigns & Recipient Upload",
+      "item": [
+        {
+          "name": "POST Validate Recipients Preview (CSV or JSON)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Tenant-ID", "value": "{{tenantId}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"channel\": \"email\",\n  \"csvContent\": \"email,name\\nalice@example.com,Alice\\nalice@example.com,Alice Duplicate\\nbad-email,Invalid Row\\nbob@example.com,Bob\"\n}"
+            },
+            "url": "{{baseUrl}}/campaigns/validate-recipients"
+          }
+        },
+        {
+          "name": "POST Create Campaign (Idempotent with JSON/CSV Recipients)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Tenant-ID", "value": "{{tenantId}}" },
+              { "key": "Idempotency-Key", "value": "idem-postman-demo-001" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"October Product Launch\",\n  \"description\": \"Release announcement campaign\",\n  \"channel\": \"email\",\n  \"subject\": \"Welcome to October Release\",\n  \"messageTemplate\": \"Hello {{name}}, welcome to the platform!\",\n  \"recipients\": [\n    { \"recipient\": \"alice@example.com\", \"name\": \"Alice\" },\n    { \"recipient\": \"retry-once@example.com\", \"name\": \"Transient Retry User\" },\n    { \"recipient\": \"perm-fail@example.com\", \"name\": \"Hard Bounce User\" }\n  ],\n  \"config\": {\n    \"batchSize\": 250,\n    \"maxAttempts\": 4,\n    \"backoffDelayMs\": 1000\n  }\n}"
+            },
+            "url": "{{baseUrl}}/campaigns"
+          }
+        },
+        {
+          "name": "GET Dashboard Summary KPIs (Cached)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "X-Tenant-ID", "value": "{{tenantId}}" }
+            ],
+            "url": "{{baseUrl}}/campaigns/summary"
+          }
+        },
+        {
+          "name": "GET List Campaigns (Search, Filter, Pagination, Cached)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "X-Tenant-ID", "value": "{{tenantId}}" }
+            ],
+            "url": "{{baseUrl}}/campaigns?page=1&limit=10&status=all"
+          }
+        },
+        {
+          "name": "GET Campaign Details by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "X-Tenant-ID", "value": "{{tenantId}}" }
+            ],
+            "url": "{{baseUrl}}/campaigns/{{campaignId}}"
+          }
+        },
+        {
+          "name": "PATCH Update Campaign",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Tenant-ID", "value": "{{tenantId}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Updated Campaign Title\",\n  \"subject\": \"Updated Subject Line\"\n}"
+            },
+            "url": "{{baseUrl}}/campaigns/{{campaignId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Lifecycle Controls & Failed Delivery Reprocessing",
+      "item": [
+        {
+          "name": "POST Pause Campaign",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "X-Tenant-ID", "value": "{{tenantId}}" }
+            ],
+            "url": "{{baseUrl}}/campaigns/{{campaignId}}/pause"
+          }
+        },
+        {
+          "name": "POST Resume Campaign",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "X-Tenant-ID", "value": "{{tenantId}}" }
+            ],
+            "url": "{{baseUrl}}/campaigns/{{campaignId}}/resume"
+          }
+        },
+        {
+          "name": "POST Cancel Campaign",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "X-Tenant-ID", "value": "{{tenantId}}" }
+            ],
+            "url": "{{baseUrl}}/campaigns/{{campaignId}}/cancel"
+          }
+        },
+        {
+          "name": "GET Inspect Failed Deliveries",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "X-Tenant-ID", "value": "{{tenantId}}" }
+            ],
+            "url": "{{baseUrl}}/campaigns/{{campaignId}}/deliveries?status=failed&page=1&limit=25"
+          }
+        },
+        {
+          "name": "POST Retry Failed Deliveries (All or Selected IDs)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Tenant-ID", "value": "{{tenantId}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"deliveryIds\": []\n}"
+            },
+            "url": "{{baseUrl}}/campaigns/{{campaignId}}/retry"
+          }
+        }
+      ]
+    }
+  ]
+}
