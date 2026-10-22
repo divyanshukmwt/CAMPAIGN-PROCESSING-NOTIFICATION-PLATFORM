@@ -11,6 +11,7 @@ import {
   triggerCampaignAction,
 } from './api/client';
 import { CampaignCreateModal } from './components/CampaignCreateModal';
+import { CampaignDetailInspector } from './components/CampaignDetailInspector';
 import { CampaignListView } from './components/CampaignListView';
 import { DashboardSummaryCards } from './components/DashboardSummaryCards';
 import { SystemHealthHeader } from './components/SystemHealthHeader';
@@ -188,7 +189,11 @@ export function App() {
           }}
         />
 
-        {selectedCampaign && <div className="hidden" aria-hidden="true" />}
+        <CampaignDetailInspector
+          campaignId={selectedCampaign?._id || null}
+          onClose={() => setSelectedCampaign(null)}
+          onUpdated={() => void refreshAll(true)}
+        />
       </main>
     </div>
   );
