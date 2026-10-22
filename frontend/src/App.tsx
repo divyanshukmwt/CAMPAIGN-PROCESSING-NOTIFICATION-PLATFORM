@@ -10,6 +10,7 @@ import {
   subscribeApiTelemetry,
   triggerCampaignAction,
 } from './api/client';
+import { CampaignCreateModal } from './components/CampaignCreateModal';
 import { CampaignListView } from './components/CampaignListView';
 import { DashboardSummaryCards } from './components/DashboardSummaryCards';
 import { SystemHealthHeader } from './components/SystemHealthHeader';
@@ -178,9 +179,16 @@ export function App() {
           onRetryFetch={() => void refreshAll(false)}
         />
 
-        {(selectedCampaign || isCreateModalOpen) && (
-          <div className="hidden" aria-hidden="true" />
-        )}
+        <CampaignCreateModal
+          isOpen={isCreateModalOpen}
+          onClose={() => setIsCreateModalOpen(false)}
+          onCreated={(campaign) => {
+            void refreshAll(false);
+            setSelectedCampaign(campaign);
+          }}
+        />
+
+        {selectedCampaign && <div className="hidden" aria-hidden="true" />}
       </main>
     </div>
   );
