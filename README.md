@@ -45,7 +45,7 @@ MySQL (task_management)
 
 ```
 .
-├── task-management-api/   # Laravel REST API          (coming soon)
+├── task-management-api/   # Laravel REST API
 ├── task-management-ui/    # Angular application       (coming soon)
 ├── e2e/                   # End-to-end tests          (coming soon)
 └── docs/                  # Postman collection, deployment examples (coming soon)
@@ -55,7 +55,7 @@ MySQL (task_management)
 
 | Software | Version |
 |---|---|
-| PHP | 8.3 or newer (extensions: `pdo_mysql`, `mbstring`, `openssl`, `fileinfo`, `curl`, `zip`) |
+| PHP | 8.3 or newer (8.4 recommended; extensions: `pdo_mysql`, `mbstring`, `openssl`, `fileinfo`, `curl`, `zip`, `intl`) |
 | Composer | 2.x |
 | Node.js | 20.19+ / 22.x LTS |
 | npm | 10+ |
@@ -64,11 +64,48 @@ MySQL (task_management)
 
 ## Installation
 
-*(coming soon — full setup instructions will be added as the backend and frontend are delivered.)*
+### 1. Create the databases
+
+```sql
+CREATE DATABASE task_management CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE DATABASE task_management_test CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+```
+
+### 2. Backend (Laravel API)
+
+```bash
+cd task-management-api
+composer install
+cp .env.example .env          # Windows: copy .env.example .env
+php artisan key:generate
+# edit .env and set DB_USERNAME / DB_PASSWORD
+php artisan migrate
+php artisan serve --host=localhost --port=8000
+```
+
+Verify the API is running: <http://localhost:8000/api/health>
+
+```json
+{ "status": "ok", "service": "Task Management API", "database": "connected", "timestamp": "..." }
+```
+
+### 3. Frontend (Angular)
+
+*(coming soon)*
 
 ## Configuration
 
-*(coming soon)*
+Backend settings live in `task-management-api/.env` (never commit this file):
+
+| Variable | Description | Default |
+|---|---|---|
+| `APP_URL` | Public URL of the API | `http://localhost:8000` |
+| `DB_HOST` / `DB_PORT` | MySQL server | `127.0.0.1` / `3306` |
+| `DB_DATABASE` | Application database | `task_management` |
+| `DB_USERNAME` / `DB_PASSWORD` | MySQL credentials | — |
+| `CORS_ALLOWED_ORIGINS` | Comma-separated trusted frontend origins | `http://localhost:4200` |
+
+> Use `localhost` (not `127.0.0.1`) in the browser for both applications so cookie-based authentication works.
 
 ## Usage
 
@@ -78,15 +115,21 @@ MySQL (task_management)
 
 | Method | Endpoint | Description |
 |---|---|---|
-| GET | `/api/tasks` | List tasks (optional `?search=`) |
-| GET | `/api/tasks/{id}` | Get a task |
-| POST | `/api/tasks` | Create a task |
-| PUT | `/api/tasks/{id}` | Update a task |
-| DELETE | `/api/tasks/{id}` | Delete a task |
+| GET | `/api/health` | API and database health check |
+| GET | `/api/tasks` | List tasks (optional `?search=`) *(coming soon)* |
+| GET | `/api/tasks/{id}` | Get a task *(coming soon)* |
+| POST | `/api/tasks` | Create a task *(coming soon)* |
+| PUT | `/api/tasks/{id}` | Update a task *(coming soon)* |
+| DELETE | `/api/tasks/{id}` | Delete a task *(coming soon)* |
 
 ## Testing
 
-*(coming soon)*
+Backend tests run against the dedicated `task_management_test` MySQL database:
+
+```bash
+cd task-management-api
+php artisan test
+```
 
 ## License
 
