@@ -1,0 +1,43 @@
+# ---------- OS / Editor ----------
+.DS_Store
+Thumbs.db
+desktop.ini
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.swp
+~$*
+
+# ---------- Secrets ----------
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# ---------- Laravel backend ----------
+task-management-api/vendor/
+task-management-api/node_modules/
+task-management-api/public/hot
+task-management-api/public/storage
+task-management-api/storage/*.key
+task-management-api/.phpunit.result.cache
+task-management-api/.phpunit.cache/
+task-management-api/Homestead.*
+
+# ---------- Angular frontend ----------
+task-management-ui/node_modules/
+task-management-ui/dist/
+task-management-ui/.angular/
+task-management-ui/coverage/
+
+# ---------- E2E ----------
+e2e/node_modules/
+e2e/test-results/
+e2e/playwright-report/
+e2e/blob-report/
+e2e/playwright/.cache/
+
+# ---------- Logs ----------
+*.log
+npm-debug.log*
