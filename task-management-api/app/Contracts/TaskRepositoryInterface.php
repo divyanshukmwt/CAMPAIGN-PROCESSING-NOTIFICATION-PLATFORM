@@ -6,6 +6,7 @@ namespace App\Contracts;
 
 use App\Models\Task;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 
 /**
  * Data-access contract for tasks.
@@ -25,7 +26,7 @@ interface TaskRepositoryInterface
     public function find(int $id): ?Task;
 
     /**
-     * @throws \Illuminate\Database\Eloquent\ModelNotFoundException
+     * @throws ModelNotFoundException
      */
     public function findOrFail(int $id): Task;
 

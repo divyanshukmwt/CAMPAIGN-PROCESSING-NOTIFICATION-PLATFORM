@@ -9,6 +9,7 @@ use App\Enums\TaskStatus;
 use Database\Factories\TaskFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Carbon;
 
 /**
  * Eloquent model for the `tasks` table.
@@ -18,9 +19,9 @@ use Illuminate\Database\Eloquent\Model;
  * @property string|null $description
  * @property TaskStatus $status
  * @property TaskPriority $priority
- * @property \Illuminate\Support\Carbon|null $due_date
- * @property \Illuminate\Support\Carbon $created_at
- * @property \Illuminate\Support\Carbon $updated_at
+ * @property Carbon|null $due_date
+ * @property Carbon $created_at
+ * @property Carbon $updated_at
  */
 class Task extends Model
 {
