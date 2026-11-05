@@ -13,10 +13,18 @@ use Illuminate\Database\Eloquent\Collection;
  */
 class TaskRepository implements TaskRepositoryInterface
 {
-    public function all(): Collection
+    public function all(?string $search = null): Collection
     {
-        // Equivalent SQL: SELECT * FROM tasks ORDER BY created_at DESC, id DESC
-        return Task::query()->latest()->latest('id')->get();
+        // Equivalent SQL: SELECT * FROM tasks [WHERE title LIKE ?] ORDER BY created_at DESC, id DESC
+        return Task::query()
+            ->when($search !== null && $search !== '', function ($query) use ($search) {
+                // Escape LIKE wildcards so user input is matched literally (value is bound, never concatenated).
+                $escaped = addcslashes((string) $search, '\\%_');
+                $query->where('title', 'like', '%'.$escaped.'%');
+            })
+            ->latest()
+            ->latest('id')
+            ->get();
     }
 
     public function find(int $id): ?Task

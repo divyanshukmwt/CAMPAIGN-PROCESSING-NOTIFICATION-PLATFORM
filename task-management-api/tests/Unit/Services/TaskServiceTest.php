@@ -39,9 +39,17 @@ class TaskServiceTest extends TestCase
     public function test_get_all_tasks_delegates_to_repository(): void
     {
         $collection = new Collection([$this->task()]);
-        $this->repository->shouldReceive('all')->once()->andReturn($collection);
+        $this->repository->shouldReceive('all')->once()->with(null)->andReturn($collection);
 
         $this->assertSame($collection, $this->service->getAllTasks());
+    }
+
+    public function test_get_all_tasks_passes_search_term_to_repository(): void
+    {
+        $collection = new Collection;
+        $this->repository->shouldReceive('all')->once()->with('laravel')->andReturn($collection);
+
+        $this->assertSame($collection, $this->service->getAllTasks('laravel'));
     }
 
     public function test_get_task_uses_find_or_fail(): void

@@ -23,11 +23,12 @@ class TaskService
     ) {}
 
     /**
+     * @param  string|null  $search  Optional case-insensitive title search term.
      * @return Collection<int, Task>
      */
-    public function getAllTasks(): Collection
+    public function getAllTasks(?string $search = null): Collection
     {
-        return $this->tasks->all();
+        return $this->tasks->all($search);
     }
 
     public function getTask(int $id): Task

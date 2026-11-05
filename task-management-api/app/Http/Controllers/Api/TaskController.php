@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\IndexTaskRequest;
 use App\Http\Requests\StoreTaskRequest;
 use App\Http\Requests\UpdateTaskRequest;
 use App\Http\Resources\TaskResource;
@@ -26,11 +27,11 @@ class TaskController extends Controller
     ) {}
 
     /**
-     * GET /api/tasks — all tasks, newest first.
+     * GET /api/tasks — all tasks, newest first. Optional ?search= filters by title.
      */
-    public function index(): AnonymousResourceCollection
+    public function index(IndexTaskRequest $request): AnonymousResourceCollection
     {
-        return TaskResource::collection($this->taskService->getAllTasks());
+        return TaskResource::collection($this->taskService->getAllTasks($request->searchTerm()));
     }
 
     /**

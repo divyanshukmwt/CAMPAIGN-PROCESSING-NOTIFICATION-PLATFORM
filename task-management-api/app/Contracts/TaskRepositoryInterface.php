@@ -17,11 +17,11 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 interface TaskRepositoryInterface
 {
     /**
-     * All tasks, newest first.
+     * All tasks, newest first, optionally filtered by a title search term.
      *
      * @return Collection<int, Task>
      */
-    public function all(): Collection;
+    public function all(?string $search = null): Collection;
 
     public function find(int $id): ?Task;
 
