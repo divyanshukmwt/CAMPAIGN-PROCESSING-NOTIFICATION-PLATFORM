@@ -5,15 +5,23 @@ namespace Database\Seeders;
 use App\Enums\TaskPriority;
 use App\Enums\TaskStatus;
 use App\Models\Task;
+use App\Models\User;
 use Illuminate\Database\Seeder;
 
 /**
- * Seeds sample tasks for local development and demos.
+ * Seeds sample tasks for local development and demos, owned by the demo user.
  */
 class TaskSeeder extends Seeder
 {
     public function run(): void
     {
+        $owner = User::where('email', DatabaseSeeder::DEMO_EMAIL)->first()
+            ?? User::factory()->create([
+                'name' => 'Test User',
+                'email' => DatabaseSeeder::DEMO_EMAIL,
+                'password' => DatabaseSeeder::DEMO_PASSWORD,
+            ]);
+
         $samples = [
             [
                 'title' => 'Learn Laravel',
@@ -39,9 +47,9 @@ class TaskSeeder extends Seeder
         ];
 
         foreach ($samples as $sample) {
-            Task::firstOrCreate(['title' => $sample['title']], $sample);
+            $owner->tasks()->firstOrCreate(['title' => $sample['title']], $sample);
         }
 
-        Task::factory()->count(7)->create();
+        Task::factory()->count(7)->for($owner)->create();
     }
 }

@@ -3,6 +3,7 @@
 namespace Tests\Feature\Api;
 
 use App\Models\Task;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Tests\TestCase;
@@ -10,6 +11,15 @@ use Tests\TestCase;
 class TaskApiTest extends TestCase
 {
     use RefreshDatabase;
+
+    private User $user;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->user = User::factory()->create();
+        $this->actingAs($this->user, 'sanctum');
+    }
 
     private function referencePayload(): array
     {
@@ -26,8 +36,8 @@ class TaskApiTest extends TestCase
 
     public function test_index_returns_plain_array_of_tasks_newest_first(): void
     {
-        $old = Task::factory()->create(['created_at' => Carbon::parse('2026-01-01')]);
-        $new = Task::factory()->create(['created_at' => Carbon::parse('2026-05-01')]);
+        $old = Task::factory()->for($this->user)->create(['created_at' => Carbon::parse('2026-01-01')]);
+        $new = Task::factory()->for($this->user)->create(['created_at' => Carbon::parse('2026-05-01')]);
 
         $response = $this->getJson('/api/tasks')->assertOk()->assertJsonCount(2);
 
@@ -82,7 +92,7 @@ class TaskApiTest extends TestCase
 
     public function test_show_returns_single_task_object(): void
     {
-        $task = Task::factory()->create(['title' => 'Show me']);
+        $task = Task::factory()->for($this->user)->create(['title' => 'Show me']);
 
         $this->getJson("/api/tasks/{$task->id}")
             ->assertOk()
@@ -100,7 +110,7 @@ class TaskApiTest extends TestCase
 
     public function test_update_with_documented_partial_payload(): void
     {
-        $task = Task::factory()->create($this->referencePayload());
+        $task = Task::factory()->for($this->user)->create($this->referencePayload());
 
         $this->putJson("/api/tasks/{$task->id}", [
             'title' => 'Learn Laravel and Angular',
@@ -119,7 +129,7 @@ class TaskApiTest extends TestCase
 
     public function test_patch_is_also_supported(): void
     {
-        $task = Task::factory()->create(['priority' => 'Low']);
+        $task = Task::factory()->for($this->user)->create(['priority' => 'Low']);
 
         $this->patchJson("/api/tasks/{$task->id}", ['priority' => 'High'])
             ->assertOk()
@@ -128,7 +138,7 @@ class TaskApiTest extends TestCase
 
     public function test_update_can_clear_optional_fields(): void
     {
-        $task = Task::factory()->create(['description' => 'Text', 'due_date' => '2026-12-31']);
+        $task = Task::factory()->for($this->user)->create(['description' => 'Text', 'due_date' => '2026-12-31']);
 
         $this->putJson("/api/tasks/{$task->id}", ['description' => null, 'due_date' => null])
             ->assertOk()
@@ -138,7 +148,7 @@ class TaskApiTest extends TestCase
 
     public function test_update_rejects_invalid_input(): void
     {
-        $task = Task::factory()->create(['title' => 'Unchanged']);
+        $task = Task::factory()->for($this->user)->create(['title' => 'Unchanged']);
 
         $this->putJson("/api/tasks/{$task->id}", ['title' => '', 'status' => 'Done'])
             ->assertUnprocessable()
@@ -156,7 +166,7 @@ class TaskApiTest extends TestCase
 
     public function test_destroy_deletes_task_and_returns_message(): void
     {
-        $task = Task::factory()->create();
+        $task = Task::factory()->for($this->user)->create();
 
         $this->deleteJson("/api/tasks/{$task->id}")
             ->assertOk()

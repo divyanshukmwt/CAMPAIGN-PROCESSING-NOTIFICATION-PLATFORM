@@ -13,12 +13,13 @@ use App\Models\Task;
 use App\Services\TaskService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Support\Facades\Gate;
 
 /**
- * REST endpoints for tasks.
+ * REST endpoints for tasks (authenticated; users only see their own tasks).
  *
- * Thin controller: validation is handled by Form Requests and business
- * logic by TaskService (injected via the constructor).
+ * Thin controller: validation is handled by Form Requests, authorisation by
+ * TaskPolicy and business logic by TaskService (injected via the constructor).
  */
 class TaskController extends Controller
 {
@@ -27,19 +28,21 @@ class TaskController extends Controller
     ) {}
 
     /**
-     * GET /api/tasks — all tasks, newest first. Optional ?search= filters by title.
+     * GET /api/tasks — the user's tasks, newest first. Optional ?search= filters by title.
      */
     public function index(IndexTaskRequest $request): AnonymousResourceCollection
     {
-        return TaskResource::collection($this->taskService->getAllTasks($request->searchTerm()));
+        return TaskResource::collection(
+            $this->taskService->getAllTasks($request->user(), $request->searchTerm())
+        );
     }
 
     /**
-     * POST /api/tasks — create a task.
+     * POST /api/tasks — create a task owned by the authenticated user.
      */
     public function store(StoreTaskRequest $request): JsonResponse
     {
-        $task = $this->taskService->createTask($request->validated());
+        $task = $this->taskService->createTask($request->user(), $request->validated());
 
         return response()->json([
             'message' => 'Task created successfully',
@@ -52,11 +55,14 @@ class TaskController extends Controller
      */
     public function show(Task $task): TaskResource
     {
+        Gate::authorize('view', $task);
+
         return new TaskResource($task);
     }
 
     /**
      * PUT/PATCH /api/tasks/{task} — update a task (partial updates allowed).
+     * Authorisation happens in UpdateTaskRequest::authorize() before validation.
      */
     public function update(UpdateTaskRequest $request, Task $task): JsonResponse
     {
@@ -73,6 +79,8 @@ class TaskController extends Controller
      */
     public function destroy(Task $task): JsonResponse
     {
+        Gate::authorize('delete', $task);
+
         $this->taskService->deleteTask($task);
 
         return response()->json([

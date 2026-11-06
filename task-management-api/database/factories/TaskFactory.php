@@ -5,6 +5,7 @@ namespace Database\Factories;
 use App\Enums\TaskPriority;
 use App\Enums\TaskStatus;
 use App\Models\Task;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -20,6 +21,7 @@ class TaskFactory extends Factory
     public function definition(): array
     {
         return [
+            'user_id' => User::factory(),
             'title' => rtrim(fake()->sentence(fake()->numberBetween(3, 6)), '.'),
             'description' => fake()->optional(0.8)->paragraph(),
             'status' => fake()->randomElement(TaskStatus::cases()),

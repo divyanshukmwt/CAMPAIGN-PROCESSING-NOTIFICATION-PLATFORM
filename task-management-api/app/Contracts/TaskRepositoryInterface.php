@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Contracts;
 
 use App\Models\Task;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 
@@ -17,11 +18,11 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 interface TaskRepositoryInterface
 {
     /**
-     * All tasks, newest first, optionally filtered by a title search term.
+     * Tasks owned by the given user, newest first, optionally filtered by a title search term.
      *
      * @return Collection<int, Task>
      */
-    public function all(?string $search = null): Collection;
+    public function allForUser(User $user, ?string $search = null): Collection;
 
     public function find(int $id): ?Task;
 
@@ -31,9 +32,11 @@ interface TaskRepositoryInterface
     public function findOrFail(int $id): Task;
 
     /**
+     * Create a task owned by the given user.
+     *
      * @param  array<string, mixed>  $data
      */
-    public function create(array $data): Task;
+    public function create(User $owner, array $data): Task;
 
     /**
      * @param  array<string, mixed>  $data

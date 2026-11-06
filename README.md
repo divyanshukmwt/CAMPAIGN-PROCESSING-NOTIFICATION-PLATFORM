@@ -80,6 +80,7 @@ cp .env.example .env          # Windows: copy .env.example .env
 php artisan key:generate
 # edit .env and set DB_USERNAME / DB_PASSWORD
 php artisan migrate
+php artisan db:seed            # optional: demo user + sample tasks
 php artisan serve --host=localhost --port=8000
 ```
 
@@ -88,6 +89,8 @@ Verify the API is running: <http://localhost:8000/api/health>
 ```json
 { "status": "ok", "service": "Task Management API", "database": "connected", "timestamp": "..." }
 ```
+
+**Demo account** (created by `php artisan db:seed`, local development only): `test@example.com` / `Password123`.
 
 ### 3. Frontend (Angular)
 
@@ -104,6 +107,8 @@ Backend settings live in `task-management-api/.env` (never commit this file):
 | `DB_DATABASE` | Application database | `task_management` |
 | `DB_USERNAME` / `DB_PASSWORD` | MySQL credentials | — |
 | `CORS_ALLOWED_ORIGINS` | Comma-separated trusted frontend origins | `http://localhost:4200` |
+| `SANCTUM_STATEFUL_DOMAINS` | Hosts (with port) that use cookie-based SPA authentication | `localhost:4200,localhost:8000,localhost` |
+| `SESSION_DRIVER` / `SESSION_LIFETIME` | Session storage and lifetime (minutes) | `database` / `120` |
 
 > Use `localhost` (not `127.0.0.1`) in the browser for both applications so cookie-based authentication works.
 
@@ -115,9 +120,30 @@ Backend settings live in `task-management-api/.env` (never commit this file):
 
 Base URL: `http://localhost:8000/api` — send `Accept: application/json`.
 
+### Authentication
+
+The API uses **Laravel Sanctum cookie-based SPA authentication** (HttpOnly session cookie + CSRF token). No tokens are stored in the browser's local storage.
+
+1. `GET /sanctum/csrf-cookie` — sets the `XSRF-TOKEN` cookie.
+2. Send the cookie value back in the `X-XSRF-TOKEN` header on every `POST`/`PUT`/`PATCH`/`DELETE` request, with credentials (cookies) included.
+3. `POST /api/login` or `POST /api/register` — starts a session.
+
 | Method | Endpoint | Description | Success |
 |---|---|---|---|
-| GET | `/health` | API and database health check | `200` |
+| POST | `/register` | Register (`name`, `email`, `password`, `password_confirmation`) and log in | `201` |
+| POST | `/login` | Log in (`email`, `password`, optional `remember`) | `200` |
+| POST | `/logout` | Log out (authenticated) | `200` |
+| GET | `/user` | Current user (authenticated) | `200` |
+
+Passwords must be at least 8 characters and contain letters and numbers.
+
+### Tasks
+
+All task endpoints require authentication. Each user only sees and manages **their own** tasks.
+
+| Method | Endpoint | Description | Success |
+|---|---|---|---|
+| GET | `/health` | API and database health check (public) | `200` |
 | GET | `/tasks` | List tasks, newest first (optional `?search=` by title) | `200` array |
 | GET | `/tasks/{id}` | Get a task | `200` object |
 | POST | `/tasks` | Create a task | `201` |
@@ -171,14 +197,17 @@ All errors are JSON:
 
 | Status | When | Body |
 |---|---|---|
+| `401` | Not logged in | `{ "message": "Unauthenticated." }` |
+| `403` | Task belongs to another user | `{ "message": "This action is unauthorized." }` |
 | `404` | Task or route not found | `{ "message": "Task not found." }` |
 | `405` | Wrong HTTP method | `{ "message": "..." }` |
-| `422` | Validation failed | `{ "message": "...", "errors": { "title": ["..."] } }` |
+| `419` | Missing or invalid CSRF token | `{ "message": "CSRF token mismatch." }` |
+| `422` | Validation failed / invalid credentials | `{ "message": "...", "errors": { "title": ["..."] } }` |
 | `500` | Unexpected error | `{ "message": "An unexpected error occurred. Please try again later." }` |
 
 ### Postman
 
-Import [`docs/postman/TaskManagement.postman_collection.json`](docs/postman/TaskManagement.postman_collection.json) into Postman and run the collection in order (it includes test assertions). It can also be run from the command line:
+Import [`docs/postman/TaskManagement.postman_collection.json`](docs/postman/TaskManagement.postman_collection.json) into Postman and run the collection in order. It fetches the CSRF cookie, registers a fresh user, exercises every task endpoint with test assertions, and finally logs out. It can also be run from the command line:
 
 ```bash
 npx newman run docs/postman/TaskManagement.postman_collection.json

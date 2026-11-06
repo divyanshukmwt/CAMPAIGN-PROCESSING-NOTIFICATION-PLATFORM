@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Database;
 
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -26,13 +27,39 @@ class TasksTableSchemaTest extends TestCase
         return collect($rows)->keyBy('COLUMN_NAME')->all();
     }
 
-    public function test_tasks_table_exists_with_exactly_the_specified_columns(): void
+    public function test_tasks_table_exists_with_the_specified_columns_plus_owner(): void
     {
         $this->assertTrue(Schema::hasTable('tasks'));
         $this->assertEqualsCanonicalizing(
-            ['id', 'title', 'description', 'status', 'priority', 'due_date', 'created_at', 'updated_at'],
+            ['id', 'user_id', 'title', 'description', 'status', 'priority', 'due_date', 'created_at', 'updated_at'],
             Schema::getColumnListing('tasks')
         );
+    }
+
+    public function test_user_id_is_a_required_foreign_key_to_users_with_cascade_delete(): void
+    {
+        $c = $this->columns();
+        $this->assertSame('bigint', $c['user_id']->DATA_TYPE);
+        $this->assertSame('NO', $c['user_id']->IS_NULLABLE);
+
+        $fk = DB::selectOne(
+            'SELECT k.REFERENCED_TABLE_NAME, k.REFERENCED_COLUMN_NAME, r.DELETE_RULE
+             FROM information_schema.KEY_COLUMN_USAGE k
+             JOIN information_schema.REFERENTIAL_CONSTRAINTS r
+               ON r.CONSTRAINT_NAME = k.CONSTRAINT_NAME AND r.CONSTRAINT_SCHEMA = k.CONSTRAINT_SCHEMA
+             WHERE k.TABLE_SCHEMA = DATABASE() AND k.TABLE_NAME = ? AND k.COLUMN_NAME = ?',
+            ['tasks', 'user_id']
+        );
+        $this->assertSame('users', $fk->REFERENCED_TABLE_NAME);
+        $this->assertSame('id', $fk->REFERENCED_COLUMN_NAME);
+        $this->assertSame('CASCADE', $fk->DELETE_RULE);
+    }
+
+    public function test_composite_index_on_user_id_and_created_at_exists(): void
+    {
+        $indexes = collect(Schema::getIndexes('tasks'))->pluck('columns')->all();
+
+        $this->assertContains(['user_id', 'created_at'], $indexes);
     }
 
     public function test_column_types_match_the_specification(): void
@@ -64,7 +91,8 @@ class TasksTableSchemaTest extends TestCase
 
     public function test_status_and_priority_defaults_are_applied_by_the_database(): void
     {
-        $id = DB::table('tasks')->insertGetId(['title' => 'Defaults check']);
+        $userId = User::factory()->create()->id;
+        $id = DB::table('tasks')->insertGetId(['title' => 'Defaults check', 'user_id' => $userId]);
         $row = DB::table('tasks')->find($id);
 
         $this->assertSame('Pending', $row->status);

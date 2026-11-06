@@ -1,201 +1,723 @@
 {
-  "info": {
-    "name": "Task Management API",
-    "_postman_id": "6d3c9a52-7a51-4b8e-9b7e-3f6f1c2a9d10",
-    "description": "REST API for the Task Management System (Laravel + MySQL).\n\nRun the requests in order: **Create task** stores the new id in the `taskId` collection variable which later requests use.\n\nSet `baseUrl` to your API URL (default `http://localhost:8000/api`).",
-    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
-  },
-  "variable": [
-    { "key": "baseUrl", "value": "http://localhost:8000/api" },
-    { "key": "taskId", "value": "" }
-  ],
-  "item": [
-    {
-      "name": "Health check",
-      "request": {
-        "method": "GET",
-        "header": [{ "key": "Accept", "value": "application/json" }],
-        "url": { "raw": "{{baseUrl}}/health", "host": ["{{baseUrl}}"], "path": ["health"] }
-      },
-      "event": [{
-        "listen": "test",
-        "script": { "type": "text/javascript", "exec": [
-          "pm.test('200 OK', () => pm.response.to.have.status(200));",
-          "pm.test('database connected', () => pm.expect(pm.response.json().database).to.eql('connected'));"
-        ]}
-      }]
-    },
-    {
-      "name": "Tasks",
-      "item": [
-        {
-          "name": "Create task",
-          "request": {
-            "method": "POST",
-            "header": [
-              { "key": "Accept", "value": "application/json" },
-              { "key": "Content-Type", "value": "application/json" }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n    \"title\": \"Learn Laravel\",\n    \"description\": \"Understand Laravel API development\",\n    \"status\": \"Pending\",\n    \"priority\": \"High\",\n    \"due_date\": \"2026-12-31\"\n}"
-            },
-            "url": { "raw": "{{baseUrl}}/tasks", "host": ["{{baseUrl}}"], "path": ["tasks"] }
-          },
-          "event": [{
-            "listen": "test",
-            "script": { "type": "text/javascript", "exec": [
-              "pm.test('201 Created', () => pm.response.to.have.status(201));",
-              "const body = pm.response.json();",
-              "pm.test('success message', () => pm.expect(body.message).to.eql('Task created successfully'));",
-              "pm.test('returns created task', () => {",
-              "  pm.expect(body.data.title).to.eql('Learn Laravel');",
-              "  pm.expect(body.data.status).to.eql('Pending');",
-              "  pm.expect(body.data.priority).to.eql('High');",
-              "  pm.expect(body.data.due_date).to.eql('2026-12-31');",
-              "});",
-              "pm.collectionVariables.set('taskId', body.data.id);"
-            ]}
-          }]
-        },
-        {
-          "name": "Get all tasks",
-          "request": {
-            "method": "GET",
-            "header": [{ "key": "Accept", "value": "application/json" }],
-            "url": { "raw": "{{baseUrl}}/tasks", "host": ["{{baseUrl}}"], "path": ["tasks"] }
-          },
-          "event": [{
-            "listen": "test",
-            "script": { "type": "text/javascript", "exec": [
-              "pm.test('200 OK', () => pm.response.to.have.status(200));",
-              "pm.test('returns an array', () => pm.expect(pm.response.json()).to.be.an('array'));",
-              "pm.test('contains the created task', () => {",
-              "  const id = Number(pm.collectionVariables.get('taskId'));",
-              "  pm.expect(pm.response.json().map(t => t.id)).to.include(id);",
-              "});"
-            ]}
-          }]
-        },
-        {
-          "name": "Search tasks by title",
-          "request": {
-            "method": "GET",
-            "header": [{ "key": "Accept", "value": "application/json" }],
-            "url": {
-              "raw": "{{baseUrl}}/tasks?search=laravel",
-              "host": ["{{baseUrl}}"], "path": ["tasks"],
-              "query": [{ "key": "search", "value": "laravel" }]
-            }
-          },
-          "event": [{
-            "listen": "test",
-            "script": { "type": "text/javascript", "exec": [
-              "pm.test('200 OK', () => pm.response.to.have.status(200));",
-              "pm.test('every title matches', () => {",
-              "  pm.response.json().forEach(t => pm.expect(t.title.toLowerCase()).to.include('laravel'));",
-              "});"
-            ]}
-          }]
-        },
-        {
-          "name": "Get one task",
-          "request": {
-            "method": "GET",
-            "header": [{ "key": "Accept", "value": "application/json" }],
-            "url": { "raw": "{{baseUrl}}/tasks/{{taskId}}", "host": ["{{baseUrl}}"], "path": ["tasks", "{{taskId}}"] }
-          },
-          "event": [{
-            "listen": "test",
-            "script": { "type": "text/javascript", "exec": [
-              "pm.test('200 OK', () => pm.response.to.have.status(200));",
-              "pm.test('returns the task', () => pm.expect(pm.response.json().id).to.eql(Number(pm.collectionVariables.get('taskId'))));"
-            ]}
-          }]
-        },
-        {
-          "name": "Update task",
-          "request": {
-            "method": "PUT",
-            "header": [
-              { "key": "Accept", "value": "application/json" },
-              { "key": "Content-Type", "value": "application/json" }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n    \"title\": \"Learn Laravel and Angular\",\n    \"status\": \"In Progress\",\n    \"priority\": \"High\"\n}"
-            },
-            "url": { "raw": "{{baseUrl}}/tasks/{{taskId}}", "host": ["{{baseUrl}}"], "path": ["tasks", "{{taskId}}"] }
-          },
-          "event": [{
-            "listen": "test",
-            "script": { "type": "text/javascript", "exec": [
-              "pm.test('200 OK', () => pm.response.to.have.status(200));",
-              "const body = pm.response.json();",
-              "pm.test('success message', () => pm.expect(body.message).to.eql('Task updated successfully'));",
-              "pm.test('fields updated', () => {",
-              "  pm.expect(body.data.title).to.eql('Learn Laravel and Angular');",
-              "  pm.expect(body.data.status).to.eql('In Progress');",
-              "});"
-            ]}
-          }]
-        },
-        {
-          "name": "Create task - validation error",
-          "request": {
-            "method": "POST",
-            "header": [
-              { "key": "Accept", "value": "application/json" },
-              { "key": "Content-Type", "value": "application/json" }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n    \"title\": \"\",\n    \"status\": \"Done\",\n    \"priority\": \"Urgent\"\n}"
-            },
-            "url": { "raw": "{{baseUrl}}/tasks", "host": ["{{baseUrl}}"], "path": ["tasks"] }
-          },
-          "event": [{
-            "listen": "test",
-            "script": { "type": "text/javascript", "exec": [
-              "pm.test('422 Unprocessable', () => pm.response.to.have.status(422));",
-              "pm.test('field errors returned', () => {",
-              "  const errors = pm.response.json().errors;",
-              "  pm.expect(errors).to.have.keys('title', 'status', 'priority');",
-              "});"
-            ]}
-          }]
-        },
-        {
-          "name": "Delete task",
-          "request": {
-            "method": "DELETE",
-            "header": [{ "key": "Accept", "value": "application/json" }],
-            "url": { "raw": "{{baseUrl}}/tasks/{{taskId}}", "host": ["{{baseUrl}}"], "path": ["tasks", "{{taskId}}"] }
-          },
-          "event": [{
-            "listen": "test",
-            "script": { "type": "text/javascript", "exec": [
-              "pm.test('200 OK', () => pm.response.to.have.status(200));",
-              "pm.test('success message', () => pm.expect(pm.response.json().message).to.eql('Task deleted successfully'));"
-            ]}
-          }]
-        },
-        {
-          "name": "Get deleted task - not found",
-          "request": {
-            "method": "GET",
-            "header": [{ "key": "Accept", "value": "application/json" }],
-            "url": { "raw": "{{baseUrl}}/tasks/{{taskId}}", "host": ["{{baseUrl}}"], "path": ["tasks", "{{taskId}}"] }
-          },
-          "event": [{
-            "listen": "test",
-            "script": { "type": "text/javascript", "exec": [
-              "pm.test('404 Not Found', () => pm.response.to.have.status(404));",
-              "pm.test('message', () => pm.expect(pm.response.json().message).to.eql('Task not found.'));"
-            ]}
-          }]
-        }
-      ]
-    }
-  ]
+    "info":  {
+                 "name":  "Task Management API",
+                 "_postman_id":  "6d3c9a52-7a51-4b8e-9b7e-3f6f1c2a9d10",
+                 "description":  "REST API for the Task Management System (Laravel + MySQL).\n\nAuthentication uses Laravel Sanctum SPA cookies: the collection first calls `/sanctum/csrf-cookie`, then registers a fresh user (session cookie stored in the cookie jar). A collection-level pre-request script sends the `X-XSRF-TOKEN` header and the `Origin`/`Referer` of the trusted SPA origin.\n\nRun the requests in order. Set `appUrl` (default `http://localhost:8000`), `baseUrl` (`{{appUrl}}/api`) and `spaOrigin` (`http://localhost:4200`).",
+                 "schema":  "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+             },
+    "variable":  [
+                     {
+                         "key":  "appUrl",
+                         "value":  "http://localhost:8000"
+                     },
+                     {
+                         "key":  "baseUrl",
+                         "value":  "http://localhost:8000/api"
+                     },
+                     {
+                         "key":  "spaOrigin",
+                         "value":  "http://localhost:4200"
+                     },
+                     {
+                         "key":  "taskId",
+                         "value":  ""
+                     },
+                     {
+                         "key":  "userEmail",
+                         "value":  ""
+                     },
+                     {
+                         "key":  "xsrfToken",
+                         "value":  ""
+                     }
+                 ],
+    "item":  [
+                 {
+                     "name":  "Health check",
+                     "request":  {
+                                     "method":  "GET",
+                                     "header":  [
+                                                    {
+                                                        "key":  "Accept",
+                                                        "value":  "application/json"
+                                                    }
+                                                ],
+                                     "url":  {
+                                                 "raw":  "{{baseUrl}}/health",
+                                                 "host":  [
+                                                              "{{baseUrl}}"
+                                                          ],
+                                                 "path":  [
+                                                              "health"
+                                                          ]
+                                             }
+                                 },
+                     "event":  [
+                                   {
+                                       "listen":  "test",
+                                       "script":  {
+                                                      "type":  "text/javascript",
+                                                      "exec":  [
+                                                                   "pm.test(\u0027200 OK\u0027, () =\u003e pm.response.to.have.status(200));",
+                                                                   "pm.test(\u0027database connected\u0027, () =\u003e pm.expect(pm.response.json().database).to.eql(\u0027connected\u0027));"
+                                                               ]
+                                                  }
+                                   }
+                               ]
+                 },
+                 {
+                     "name":  "Authentication",
+                     "item":  [
+                                  {
+                                      "name":  "Get CSRF cookie",
+                                      "request":  {
+                                                      "method":  "GET",
+                                                      "url":  {
+                                                                  "host":  [
+                                                                               "{{appUrl}}"
+                                                                           ],
+                                                                  "raw":  "{{appUrl}}/sanctum/csrf-cookie",
+                                                                  "path":  [
+                                                                               "sanctum",
+                                                                               "csrf-cookie"
+                                                                           ]
+                                                              },
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "Accept",
+                                                                         "value":  "application/json"
+                                                                     }
+                                                                 ]
+                                                  },
+                                      "event":  [
+                                                    {
+                                                        "script":  {
+                                                                       "exec":  [
+                                                                                    "pm.test(\u0027204 No Content\u0027, () =\u003e pm.response.to.have.status(204));",
+                                                                                    "pm.test(\u0027XSRF-TOKEN cookie set\u0027, () =\u003e pm.expect(pm.cookies.has(\u0027XSRF-TOKEN\u0027)).to.be.true);"
+                                                                                ],
+                                                                       "type":  "text/javascript"
+                                                                   },
+                                                        "listen":  "test"
+                                                    }
+                                                ]
+                                  },
+                                  {
+                                      "name":  "Register",
+                                      "event":  [
+                                                    {
+                                                        "script":  {
+                                                                       "exec":  [
+                                                                                    "pm.collectionVariables.set(\u0027userEmail\u0027, \u0027postman.\u0027 + Date.now() + \u0027@example.com\u0027);"
+                                                                                ],
+                                                                       "type":  "text/javascript"
+                                                                   },
+                                                        "listen":  "prerequest"
+                                                    },
+                                                    {
+                                                        "script":  {
+                                                                       "exec":  [
+                                                                                    "pm.test(\u0027201 Created\u0027, () =\u003e pm.response.to.have.status(201));",
+                                                                                    "pm.test(\u0027message\u0027, () =\u003e pm.expect(pm.response.json().message).to.eql(\u0027Registration successful\u0027));",
+                                                                                    "pm.test(\u0027no password in response\u0027, () =\u003e pm.expect(pm.response.json().user).to.not.have.property(\u0027password\u0027));"
+                                                                                ],
+                                                                       "type":  "text/javascript"
+                                                                   },
+                                                        "listen":  "test"
+                                                    }
+                                                ],
+                                      "request":  {
+                                                      "url":  {
+                                                                  "host":  [
+                                                                               "{{baseUrl}}"
+                                                                           ],
+                                                                  "raw":  "{{baseUrl}}/register",
+                                                                  "path":  [
+                                                                               "register"
+                                                                           ]
+                                                              },
+                                                      "method":  "POST",
+                                                      "body":  {
+                                                                   "raw":  "{\n    \"name\": \"Postman User\",\n    \"email\": \"{{userEmail}}\",\n    \"password\": \"Secret123\",\n    \"password_confirmation\": \"Secret123\"\n}",
+                                                                   "mode":  "raw"
+                                                               },
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "Accept",
+                                                                         "value":  "application/json"
+                                                                     },
+                                                                     {
+                                                                         "key":  "Content-Type",
+                                                                         "value":  "application/json"
+                                                                     }
+                                                                 ]
+                                                  }
+                                  },
+                                  {
+                                      "name":  "Current user",
+                                      "request":  {
+                                                      "method":  "GET",
+                                                      "url":  {
+                                                                  "host":  [
+                                                                               "{{baseUrl}}"
+                                                                           ],
+                                                                  "raw":  "{{baseUrl}}/user",
+                                                                  "path":  [
+                                                                               "user"
+                                                                           ]
+                                                              },
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "Accept",
+                                                                         "value":  "application/json"
+                                                                     }
+                                                                 ]
+                                                  },
+                                      "event":  [
+                                                    {
+                                                        "script":  {
+                                                                       "exec":  [
+                                                                                    "pm.test(\u0027200 OK\u0027, () =\u003e pm.response.to.have.status(200));",
+                                                                                    "pm.test(\u0027is the registered user\u0027, () =\u003e pm.expect(pm.response.json().email).to.eql(pm.collectionVariables.get(\u0027userEmail\u0027)));"
+                                                                                ],
+                                                                       "type":  "text/javascript"
+                                                                   },
+                                                        "listen":  "test"
+                                                    }
+                                                ]
+                                  }
+                              ]
+                 },
+                 {
+                     "name":  "Tasks",
+                     "item":  [
+                                  {
+                                      "name":  "Create task",
+                                      "request":  {
+                                                      "method":  "POST",
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "Accept",
+                                                                         "value":  "application/json"
+                                                                     },
+                                                                     {
+                                                                         "key":  "Content-Type",
+                                                                         "value":  "application/json"
+                                                                     }
+                                                                 ],
+                                                      "body":  {
+                                                                   "mode":  "raw",
+                                                                   "raw":  "{\n    \"title\": \"Learn Laravel\",\n    \"description\": \"Understand Laravel API development\",\n    \"status\": \"Pending\",\n    \"priority\": \"High\",\n    \"due_date\": \"2026-12-31\"\n}"
+                                                               },
+                                                      "url":  {
+                                                                  "raw":  "{{baseUrl}}/tasks",
+                                                                  "host":  [
+                                                                               "{{baseUrl}}"
+                                                                           ],
+                                                                  "path":  [
+                                                                               "tasks"
+                                                                           ]
+                                                              }
+                                                  },
+                                      "event":  [
+                                                    {
+                                                        "listen":  "test",
+                                                        "script":  {
+                                                                       "type":  "text/javascript",
+                                                                       "exec":  [
+                                                                                    "pm.test(\u0027201 Created\u0027, () =\u003e pm.response.to.have.status(201));",
+                                                                                    "const body = pm.response.json();",
+                                                                                    "pm.test(\u0027success message\u0027, () =\u003e pm.expect(body.message).to.eql(\u0027Task created successfully\u0027));",
+                                                                                    "pm.test(\u0027returns created task\u0027, () =\u003e {",
+                                                                                    "  pm.expect(body.data.title).to.eql(\u0027Learn Laravel\u0027);",
+                                                                                    "  pm.expect(body.data.status).to.eql(\u0027Pending\u0027);",
+                                                                                    "  pm.expect(body.data.priority).to.eql(\u0027High\u0027);",
+                                                                                    "  pm.expect(body.data.due_date).to.eql(\u00272026-12-31\u0027);",
+                                                                                    "});",
+                                                                                    "pm.collectionVariables.set(\u0027taskId\u0027, body.data.id);"
+                                                                                ]
+                                                                   }
+                                                    }
+                                                ]
+                                  },
+                                  {
+                                      "name":  "Get all tasks",
+                                      "request":  {
+                                                      "method":  "GET",
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "Accept",
+                                                                         "value":  "application/json"
+                                                                     }
+                                                                 ],
+                                                      "url":  {
+                                                                  "raw":  "{{baseUrl}}/tasks",
+                                                                  "host":  [
+                                                                               "{{baseUrl}}"
+                                                                           ],
+                                                                  "path":  [
+                                                                               "tasks"
+                                                                           ]
+                                                              }
+                                                  },
+                                      "event":  [
+                                                    {
+                                                        "listen":  "test",
+                                                        "script":  {
+                                                                       "type":  "text/javascript",
+                                                                       "exec":  [
+                                                                                    "pm.test(\u0027200 OK\u0027, () =\u003e pm.response.to.have.status(200));",
+                                                                                    "pm.test(\u0027returns an array\u0027, () =\u003e pm.expect(pm.response.json()).to.be.an(\u0027array\u0027));",
+                                                                                    "pm.test(\u0027contains the created task\u0027, () =\u003e {",
+                                                                                    "  const id = Number(pm.collectionVariables.get(\u0027taskId\u0027));",
+                                                                                    "  pm.expect(pm.response.json().map(t =\u003e t.id)).to.include(id);",
+                                                                                    "});"
+                                                                                ]
+                                                                   }
+                                                    }
+                                                ]
+                                  },
+                                  {
+                                      "name":  "Search tasks by title",
+                                      "request":  {
+                                                      "method":  "GET",
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "Accept",
+                                                                         "value":  "application/json"
+                                                                     }
+                                                                 ],
+                                                      "url":  {
+                                                                  "raw":  "{{baseUrl}}/tasks?search=laravel",
+                                                                  "host":  [
+                                                                               "{{baseUrl}}"
+                                                                           ],
+                                                                  "path":  [
+                                                                               "tasks"
+                                                                           ],
+                                                                  "query":  [
+                                                                                {
+                                                                                    "key":  "search",
+                                                                                    "value":  "laravel"
+                                                                                }
+                                                                            ]
+                                                              }
+                                                  },
+                                      "event":  [
+                                                    {
+                                                        "listen":  "test",
+                                                        "script":  {
+                                                                       "type":  "text/javascript",
+                                                                       "exec":  [
+                                                                                    "pm.test(\u0027200 OK\u0027, () =\u003e pm.response.to.have.status(200));",
+                                                                                    "pm.test(\u0027every title matches\u0027, () =\u003e {",
+                                                                                    "  pm.response.json().forEach(t =\u003e pm.expect(t.title.toLowerCase()).to.include(\u0027laravel\u0027));",
+                                                                                    "});"
+                                                                                ]
+                                                                   }
+                                                    }
+                                                ]
+                                  },
+                                  {
+                                      "name":  "Get one task",
+                                      "request":  {
+                                                      "method":  "GET",
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "Accept",
+                                                                         "value":  "application/json"
+                                                                     }
+                                                                 ],
+                                                      "url":  {
+                                                                  "raw":  "{{baseUrl}}/tasks/{{taskId}}",
+                                                                  "host":  [
+                                                                               "{{baseUrl}}"
+                                                                           ],
+                                                                  "path":  [
+                                                                               "tasks",
+                                                                               "{{taskId}}"
+                                                                           ]
+                                                              }
+                                                  },
+                                      "event":  [
+                                                    {
+                                                        "listen":  "test",
+                                                        "script":  {
+                                                                       "type":  "text/javascript",
+                                                                       "exec":  [
+                                                                                    "pm.test(\u0027200 OK\u0027, () =\u003e pm.response.to.have.status(200));",
+                                                                                    "pm.test(\u0027returns the task\u0027, () =\u003e pm.expect(pm.response.json().id).to.eql(Number(pm.collectionVariables.get(\u0027taskId\u0027))));"
+                                                                                ]
+                                                                   }
+                                                    }
+                                                ]
+                                  },
+                                  {
+                                      "name":  "Update task",
+                                      "request":  {
+                                                      "method":  "PUT",
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "Accept",
+                                                                         "value":  "application/json"
+                                                                     },
+                                                                     {
+                                                                         "key":  "Content-Type",
+                                                                         "value":  "application/json"
+                                                                     }
+                                                                 ],
+                                                      "body":  {
+                                                                   "mode":  "raw",
+                                                                   "raw":  "{\n    \"title\": \"Learn Laravel and Angular\",\n    \"status\": \"In Progress\",\n    \"priority\": \"High\"\n}"
+                                                               },
+                                                      "url":  {
+                                                                  "raw":  "{{baseUrl}}/tasks/{{taskId}}",
+                                                                  "host":  [
+                                                                               "{{baseUrl}}"
+                                                                           ],
+                                                                  "path":  [
+                                                                               "tasks",
+                                                                               "{{taskId}}"
+                                                                           ]
+                                                              }
+                                                  },
+                                      "event":  [
+                                                    {
+                                                        "listen":  "test",
+                                                        "script":  {
+                                                                       "type":  "text/javascript",
+                                                                       "exec":  [
+                                                                                    "pm.test(\u0027200 OK\u0027, () =\u003e pm.response.to.have.status(200));",
+                                                                                    "const body = pm.response.json();",
+                                                                                    "pm.test(\u0027success message\u0027, () =\u003e pm.expect(body.message).to.eql(\u0027Task updated successfully\u0027));",
+                                                                                    "pm.test(\u0027fields updated\u0027, () =\u003e {",
+                                                                                    "  pm.expect(body.data.title).to.eql(\u0027Learn Laravel and Angular\u0027);",
+                                                                                    "  pm.expect(body.data.status).to.eql(\u0027In Progress\u0027);",
+                                                                                    "});"
+                                                                                ]
+                                                                   }
+                                                    }
+                                                ]
+                                  },
+                                  {
+                                      "name":  "Create task - validation error",
+                                      "request":  {
+                                                      "method":  "POST",
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "Accept",
+                                                                         "value":  "application/json"
+                                                                     },
+                                                                     {
+                                                                         "key":  "Content-Type",
+                                                                         "value":  "application/json"
+                                                                     }
+                                                                 ],
+                                                      "body":  {
+                                                                   "mode":  "raw",
+                                                                   "raw":  "{\n    \"title\": \"\",\n    \"status\": \"Done\",\n    \"priority\": \"Urgent\"\n}"
+                                                               },
+                                                      "url":  {
+                                                                  "raw":  "{{baseUrl}}/tasks",
+                                                                  "host":  [
+                                                                               "{{baseUrl}}"
+                                                                           ],
+                                                                  "path":  [
+                                                                               "tasks"
+                                                                           ]
+                                                              }
+                                                  },
+                                      "event":  [
+                                                    {
+                                                        "listen":  "test",
+                                                        "script":  {
+                                                                       "type":  "text/javascript",
+                                                                       "exec":  [
+                                                                                    "pm.test(\u0027422 Unprocessable\u0027, () =\u003e pm.response.to.have.status(422));",
+                                                                                    "pm.test(\u0027field errors returned\u0027, () =\u003e {",
+                                                                                    "  const errors = pm.response.json().errors;",
+                                                                                    "  pm.expect(errors).to.have.keys(\u0027title\u0027, \u0027status\u0027, \u0027priority\u0027);",
+                                                                                    "});"
+                                                                                ]
+                                                                   }
+                                                    }
+                                                ]
+                                  },
+                                  {
+                                      "name":  "Delete task",
+                                      "request":  {
+                                                      "method":  "DELETE",
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "Accept",
+                                                                         "value":  "application/json"
+                                                                     }
+                                                                 ],
+                                                      "url":  {
+                                                                  "raw":  "{{baseUrl}}/tasks/{{taskId}}",
+                                                                  "host":  [
+                                                                               "{{baseUrl}}"
+                                                                           ],
+                                                                  "path":  [
+                                                                               "tasks",
+                                                                               "{{taskId}}"
+                                                                           ]
+                                                              }
+                                                  },
+                                      "event":  [
+                                                    {
+                                                        "listen":  "test",
+                                                        "script":  {
+                                                                       "type":  "text/javascript",
+                                                                       "exec":  [
+                                                                                    "pm.test(\u0027200 OK\u0027, () =\u003e pm.response.to.have.status(200));",
+                                                                                    "pm.test(\u0027success message\u0027, () =\u003e pm.expect(pm.response.json().message).to.eql(\u0027Task deleted successfully\u0027));"
+                                                                                ]
+                                                                   }
+                                                    }
+                                                ]
+                                  },
+                                  {
+                                      "name":  "Get deleted task - not found",
+                                      "request":  {
+                                                      "method":  "GET",
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "Accept",
+                                                                         "value":  "application/json"
+                                                                     }
+                                                                 ],
+                                                      "url":  {
+                                                                  "raw":  "{{baseUrl}}/tasks/{{taskId}}",
+                                                                  "host":  [
+                                                                               "{{baseUrl}}"
+                                                                           ],
+                                                                  "path":  [
+                                                                               "tasks",
+                                                                               "{{taskId}}"
+                                                                           ]
+                                                              }
+                                                  },
+                                      "event":  [
+                                                    {
+                                                        "listen":  "test",
+                                                        "script":  {
+                                                                       "type":  "text/javascript",
+                                                                       "exec":  [
+                                                                                    "pm.test(\u0027404 Not Found\u0027, () =\u003e pm.response.to.have.status(404));",
+                                                                                    "pm.test(\u0027message\u0027, () =\u003e pm.expect(pm.response.json().message).to.eql(\u0027Task not found.\u0027));"
+                                                                                ]
+                                                                   }
+                                                    }
+                                                ]
+                                  }
+                              ]
+                 },
+                 {
+                     "name":  "Session end",
+                     "item":  [
+                                  {
+                                      "name":  "Logout",
+                                      "request":  {
+                                                      "method":  "POST",
+                                                      "url":  {
+                                                                  "host":  [
+                                                                               "{{baseUrl}}"
+                                                                           ],
+                                                                  "raw":  "{{baseUrl}}/logout",
+                                                                  "path":  [
+                                                                               "logout"
+                                                                           ]
+                                                              },
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "Accept",
+                                                                         "value":  "application/json"
+                                                                     }
+                                                                 ]
+                                                  },
+                                      "event":  [
+                                                    {
+                                                        "script":  {
+                                                                       "exec":  [
+                                                                                    "pm.test(\u0027200 OK\u0027, () =\u003e pm.response.to.have.status(200));",
+                                                                                    "pm.test(\u0027message\u0027, () =\u003e pm.expect(pm.response.json().message).to.eql(\u0027Logged out successfully\u0027));"
+                                                                                ],
+                                                                       "type":  "text/javascript"
+                                                                   },
+                                                        "listen":  "test"
+                                                    }
+                                                ]
+                                  },
+                                  {
+                                      "name":  "Get tasks after logout - unauthenticated",
+                                      "request":  {
+                                                      "method":  "GET",
+                                                      "url":  {
+                                                                  "host":  [
+                                                                               "{{baseUrl}}"
+                                                                           ],
+                                                                  "raw":  "{{baseUrl}}/tasks",
+                                                                  "path":  [
+                                                                               "tasks"
+                                                                           ]
+                                                              },
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "Accept",
+                                                                         "value":  "application/json"
+                                                                     }
+                                                                 ]
+                                                  },
+                                      "event":  [
+                                                    {
+                                                        "script":  {
+                                                                       "exec":  [
+                                                                                    "pm.test(\u0027401 Unauthorized\u0027, () =\u003e pm.response.to.have.status(401));"
+                                                                                ],
+                                                                       "type":  "text/javascript"
+                                                                   },
+                                                        "listen":  "test"
+                                                    }
+                                                ]
+                                  },
+                                  {
+                                      "name":  "Get CSRF cookie",
+                                      "request":  {
+                                                      "method":  "GET",
+                                                      "url":  {
+                                                                  "host":  [
+                                                                               "{{appUrl}}"
+                                                                           ],
+                                                                  "raw":  "{{appUrl}}/sanctum/csrf-cookie",
+                                                                  "path":  [
+                                                                               "sanctum",
+                                                                               "csrf-cookie"
+                                                                           ]
+                                                              },
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "Accept",
+                                                                         "value":  "application/json"
+                                                                     }
+                                                                 ]
+                                                  },
+                                      "event":  [
+                                                    {
+                                                        "script":  {
+                                                                       "exec":  [
+                                                                                    "pm.test(\u0027204 No Content\u0027, () =\u003e pm.response.to.have.status(204));",
+                                                                                    "pm.test(\u0027XSRF-TOKEN cookie set\u0027, () =\u003e pm.expect(pm.cookies.has(\u0027XSRF-TOKEN\u0027)).to.be.true);"
+                                                                                ],
+                                                                       "type":  "text/javascript"
+                                                                   },
+                                                        "listen":  "test"
+                                                    }
+                                                ]
+                                  },
+                                  {
+                                      "name":  "Login",
+                                      "request":  {
+                                                      "url":  {
+                                                                  "host":  [
+                                                                               "{{baseUrl}}"
+                                                                           ],
+                                                                  "raw":  "{{baseUrl}}/login",
+                                                                  "path":  [
+                                                                               "login"
+                                                                           ]
+                                                              },
+                                                      "method":  "POST",
+                                                      "body":  {
+                                                                   "raw":  "{\n    \"email\": \"{{userEmail}}\",\n    \"password\": \"Secret123\"\n}",
+                                                                   "mode":  "raw"
+                                                               },
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "Accept",
+                                                                         "value":  "application/json"
+                                                                     },
+                                                                     {
+                                                                         "key":  "Content-Type",
+                                                                         "value":  "application/json"
+                                                                     }
+                                                                 ]
+                                                  },
+                                      "event":  [
+                                                    {
+                                                        "script":  {
+                                                                       "exec":  [
+                                                                                    "pm.test(\u0027200 OK\u0027, () =\u003e pm.response.to.have.status(200));",
+                                                                                    "pm.test(\u0027message\u0027, () =\u003e pm.expect(pm.response.json().message).to.eql(\u0027Login successful\u0027));"
+                                                                                ],
+                                                                       "type":  "text/javascript"
+                                                                   },
+                                                        "listen":  "test"
+                                                    }
+                                                ]
+                                  },
+                                  {
+                                      "name":  "Logout",
+                                      "request":  {
+                                                      "method":  "POST",
+                                                      "url":  {
+                                                                  "host":  [
+                                                                               "{{baseUrl}}"
+                                                                           ],
+                                                                  "raw":  "{{baseUrl}}/logout",
+                                                                  "path":  [
+                                                                               "logout"
+                                                                           ]
+                                                              },
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "Accept",
+                                                                         "value":  "application/json"
+                                                                     }
+                                                                 ]
+                                                  },
+                                      "event":  [
+                                                    {
+                                                        "script":  {
+                                                                       "exec":  [
+                                                                                    "pm.test(\u0027200 OK\u0027, () =\u003e pm.response.to.have.status(200));",
+                                                                                    "pm.test(\u0027message\u0027, () =\u003e pm.expect(pm.response.json().message).to.eql(\u0027Logged out successfully\u0027));"
+                                                                                ],
+                                                                       "type":  "text/javascript"
+                                                                   },
+                                                        "listen":  "test"
+                                                    }
+                                                ]
+                                  }
+                              ]
+                 }
+             ],
+    "event":  [
+                  {
+                      "script":  {
+                                     "exec":  [
+                                                  "// Sanctum SPA: identify as the trusted frontend and send the CSRF token captured from the XSRF-TOKEN cookie.",
+                                                  "const origin = pm.collectionVariables.get(\u0027spaOrigin\u0027);",
+                                                  "pm.request.headers.upsert({ key: \u0027Origin\u0027, value: origin });",
+                                                  "pm.request.headers.upsert({ key: \u0027Referer\u0027, value: origin + \u0027/\u0027 });",
+                                                  "const xsrf = pm.collectionVariables.get(\u0027xsrfToken\u0027);",
+                                                  "if (xsrf) { pm.request.headers.upsert({ key: \u0027X-XSRF-TOKEN\u0027, value: xsrf }); }"
+                                              ],
+                                     "type":  "text/javascript"
+                                 },
+                      "listen":  "prerequest"
+                  },
+                  {
+                      "script":  {
+                                     "exec":  [
+                                                  "// Laravel refreshes the XSRF-TOKEN cookie on responses; keep the latest value.",
+                                                  "if (pm.cookies.has(\u0027XSRF-TOKEN\u0027)) {",
+                                                  "  pm.collectionVariables.set(\u0027xsrfToken\u0027, decodeURIComponent(pm.cookies.get(\u0027XSRF-TOKEN\u0027)));",
+                                                  "}"
+                                              ],
+                                     "type":  "text/javascript"
+                                 },
+                      "listen":  "test"
+                  }
+              ]
 }

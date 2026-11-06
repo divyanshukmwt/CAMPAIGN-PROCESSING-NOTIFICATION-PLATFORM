@@ -8,6 +8,7 @@ use App\Contracts\TaskRepositoryInterface;
 use App\Enums\TaskPriority;
 use App\Enums\TaskStatus;
 use App\Models\Task;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Log;
 
@@ -23,12 +24,14 @@ class TaskService
     ) {}
 
     /**
+     * Tasks owned by the user, newest first.
+     *
      * @param  string|null  $search  Optional case-insensitive title search term.
      * @return Collection<int, Task>
      */
-    public function getAllTasks(?string $search = null): Collection
+    public function getAllTasks(User $user, ?string $search = null): Collection
     {
-        return $this->tasks->all($search);
+        return $this->tasks->allForUser($user, $search);
     }
 
     public function getTask(int $id): Task
@@ -37,17 +40,19 @@ class TaskService
     }
 
     /**
+     * Create a task owned by the given user.
+     *
      * @param  array<string, mixed>  $data  Validated input.
      */
-    public function createTask(array $data): Task
+    public function createTask(User $owner, array $data): Task
     {
         $data = $this->normalise($data);
         $data['status'] ??= TaskStatus::DEFAULT->value;
         $data['priority'] ??= TaskPriority::DEFAULT->value;
 
-        $task = $this->tasks->create($data);
+        $task = $this->tasks->create($owner, $data);
 
-        Log::info('Task created', ['task_id' => $task->id]);
+        Log::info('Task created', ['task_id' => $task->id, 'user_id' => $owner->id]);
 
         return $task;
     }

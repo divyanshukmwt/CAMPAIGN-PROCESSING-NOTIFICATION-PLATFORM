@@ -9,12 +9,14 @@ use App\Enums\TaskStatus;
 use Database\Factories\TaskFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
 
 /**
  * Eloquent model for the `tasks` table.
  *
  * @property int $id
+ * @property int $user_id
  * @property string $title
  * @property string|null $description
  * @property TaskStatus $status
@@ -57,9 +59,21 @@ class Task extends Model
     protected function casts(): array
     {
         return [
+            'user_id' => 'integer',
             'status' => TaskStatus::class,
             'priority' => TaskPriority::class,
             'due_date' => 'date:Y-m-d',
         ];
+    }
+
+    /**
+     * The user who owns this task. `user_id` is intentionally not fillable:
+     * ownership is assigned by the service layer, never from request input.
+     *
+     * @return BelongsTo<User, $this>
+     */
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
     }
 }

@@ -6,6 +6,7 @@ namespace App\Repositories;
 
 use App\Contracts\TaskRepositoryInterface;
 use App\Models\Task;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Collection;
 
 /**
@@ -13,10 +14,12 @@ use Illuminate\Database\Eloquent\Collection;
  */
 class TaskRepository implements TaskRepositoryInterface
 {
-    public function all(?string $search = null): Collection
+    public function allForUser(User $user, ?string $search = null): Collection
     {
-        // Equivalent SQL: SELECT * FROM tasks [WHERE title LIKE ?] ORDER BY created_at DESC, id DESC
+        // Equivalent SQL: SELECT * FROM tasks WHERE user_id = ? [AND title LIKE ?]
+        //                 ORDER BY created_at DESC, id DESC
         return Task::query()
+            ->where('user_id', $user->id)
             ->when($search !== null && $search !== '', function ($query) use ($search) {
                 // Escape LIKE wildcards so user input is matched literally (value is bound, never concatenated).
                 $escaped = addcslashes((string) $search, '\\%_');
@@ -37,9 +40,9 @@ class TaskRepository implements TaskRepositoryInterface
         return Task::query()->findOrFail($id);
     }
 
-    public function create(array $data): Task
+    public function create(User $owner, array $data): Task
     {
-        return Task::create($data)->refresh();
+        return $owner->tasks()->create($data)->refresh();
     }
 
     public function update(Task $task, array $data): Task

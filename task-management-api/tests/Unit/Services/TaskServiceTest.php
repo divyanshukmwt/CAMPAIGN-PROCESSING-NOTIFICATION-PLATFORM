@@ -4,6 +4,7 @@ namespace Tests\Unit\Services;
 
 use App\Contracts\TaskRepositoryInterface;
 use App\Models\Task;
+use App\Models\User;
 use App\Services\TaskService;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Log;
@@ -20,12 +21,16 @@ class TaskServiceTest extends TestCase
 
     private TaskService $service;
 
+    private User $user;
+
     protected function setUp(): void
     {
         parent::setUp();
         Log::spy();
         $this->repository = Mockery::mock(TaskRepositoryInterface::class);
         $this->service = new TaskService($this->repository);
+        $this->user = new User;
+        $this->user->id = 42;
     }
 
     private function task(int $id = 1): Task
@@ -36,20 +41,20 @@ class TaskServiceTest extends TestCase
         return $task;
     }
 
-    public function test_get_all_tasks_delegates_to_repository(): void
+    public function test_get_all_tasks_is_scoped_to_the_user(): void
     {
         $collection = new Collection([$this->task()]);
-        $this->repository->shouldReceive('all')->once()->with(null)->andReturn($collection);
+        $this->repository->shouldReceive('allForUser')->once()->with($this->user, null)->andReturn($collection);
 
-        $this->assertSame($collection, $this->service->getAllTasks());
+        $this->assertSame($collection, $this->service->getAllTasks($this->user));
     }
 
     public function test_get_all_tasks_passes_search_term_to_repository(): void
     {
         $collection = new Collection;
-        $this->repository->shouldReceive('all')->once()->with('laravel')->andReturn($collection);
+        $this->repository->shouldReceive('allForUser')->once()->with($this->user, 'laravel')->andReturn($collection);
 
-        $this->assertSame($collection, $this->service->getAllTasks('laravel'));
+        $this->assertSame($collection, $this->service->getAllTasks($this->user, 'laravel'));
     }
 
     public function test_get_task_uses_find_or_fail(): void
@@ -60,10 +65,10 @@ class TaskServiceTest extends TestCase
         $this->assertSame($task, $this->service->getTask(5));
     }
 
-    public function test_create_applies_default_status_and_priority_and_normalises_input(): void
+    public function test_create_applies_defaults_normalises_input_and_assigns_owner(): void
     {
         $this->repository->shouldReceive('create')->once()
-            ->with([
+            ->with($this->user, [
                 'title' => 'Trimmed',
                 'description' => null,
                 'status' => 'Pending',
@@ -71,18 +76,18 @@ class TaskServiceTest extends TestCase
             ])
             ->andReturn($this->task(10));
 
-        $this->service->createTask(['title' => '  Trimmed  ', 'description' => '   ']);
+        $this->service->createTask($this->user, ['title' => '  Trimmed  ', 'description' => '   ']);
 
-        Log::shouldHaveReceived('info')->with('Task created', ['task_id' => 10]);
+        Log::shouldHaveReceived('info')->with('Task created', ['task_id' => 10, 'user_id' => 42]);
     }
 
     public function test_create_keeps_explicit_status_and_priority(): void
     {
         $this->repository->shouldReceive('create')->once()
-            ->with(Mockery::on(fn (array $d) => $d['status'] === 'Completed' && $d['priority'] === 'High'))
+            ->with($this->user, Mockery::on(fn (array $d) => $d['status'] === 'Completed' && $d['priority'] === 'High'))
             ->andReturn($this->task());
 
-        $this->service->createTask(['title' => 'X', 'status' => 'Completed', 'priority' => 'High']);
+        $this->service->createTask($this->user, ['title' => 'X', 'status' => 'Completed', 'priority' => 'High']);
     }
 
     public function test_update_passes_only_provided_fields(): void

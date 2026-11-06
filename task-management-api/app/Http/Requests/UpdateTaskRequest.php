@@ -6,6 +6,7 @@ namespace App\Http\Requests;
 
 use App\Enums\TaskPriority;
 use App\Enums\TaskStatus;
+use App\Models\Task;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -17,9 +18,15 @@ use Illuminate\Validation\Rule;
  */
 class UpdateTaskRequest extends FormRequest
 {
+    /**
+     * Only the task owner may update it (TaskPolicy::update). Runs before
+     * validation so other users get 403 rather than validation details.
+     */
     public function authorize(): bool
     {
-        return true;
+        $task = $this->route('task');
+
+        return $task instanceof Task && ($this->user()?->can('update', $task) ?? false);
     }
 
     /**

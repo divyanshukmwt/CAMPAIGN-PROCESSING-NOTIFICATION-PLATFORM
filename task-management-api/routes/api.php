@@ -14,6 +14,7 @@ Route::post('/login', [AuthController::class, 'login'])->name('auth.login');
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout'])->name('auth.logout');
     Route::get('/user', [AuthController::class, 'user'])->name('auth.user');
-});
 
-Route::apiResource('tasks', TaskController::class);
+    // Task CRUD — scoped to the authenticated user via TaskPolicy
+    Route::apiResource('tasks', TaskController::class);
+});

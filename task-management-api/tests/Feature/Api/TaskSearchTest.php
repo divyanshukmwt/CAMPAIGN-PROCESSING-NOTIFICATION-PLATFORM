@@ -3,6 +3,7 @@
 namespace Tests\Feature\Api;
 
 use App\Models\Task;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -10,13 +11,17 @@ class TaskSearchTest extends TestCase
 {
     use RefreshDatabase;
 
+    private User $user;
+
     protected function setUp(): void
     {
         parent::setUp();
-        Task::factory()->create(['title' => 'Learn Laravel']);
-        Task::factory()->create(['title' => 'Learn Angular']);
-        Task::factory()->create(['title' => 'Configure MySQL']);
-        Task::factory()->create(['title' => '100% coverage_goal']);
+        $this->user = User::factory()->create();
+        $this->actingAs($this->user, 'sanctum');
+        Task::factory()->for($this->user)->create(['title' => 'Learn Laravel']);
+        Task::factory()->for($this->user)->create(['title' => 'Learn Angular']);
+        Task::factory()->for($this->user)->create(['title' => 'Configure MySQL']);
+        Task::factory()->for($this->user)->create(['title' => '100% coverage_goal']);
     }
 
     /**
