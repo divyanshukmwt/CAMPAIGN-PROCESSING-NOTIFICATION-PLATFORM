@@ -1,0 +1,67 @@
+.app-shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.app-toolbar {
+  background: #0f172a;
+  color: #f8fafc;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.15);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  padding: 0 1.5rem;
+}
+
+.toolbar-container {
+  max-width: 1200px;
+  width: 100%;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.brand-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.625rem;
+  color: #ffffff;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 1.125rem;
+  letter-spacing: -0.01em;
+
+  mat-icon {
+    color: #38bdf8;
+  }
+}
+
+.toolbar-nav {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+
+  a[mat-button] {
+    color: #e2e8f0;
+  }
+}
+
+.app-content {
+  flex: 1;
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem;
+}
+
+.app-footer {
+  padding: 1rem 1.5rem;
+  text-align: center;
+  font-size: 0.8125rem;
+  color: #64748b;
+  border-top: 1px solid #e2e8f0;
+  background: #ffffff;
+}

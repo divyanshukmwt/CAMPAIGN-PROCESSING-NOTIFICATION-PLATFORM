@@ -19,11 +19,12 @@ describe('App', () => {
     expect(app).toBeTruthy();
   });
 
-  it('should render the application title', async () => {
+  it('should render the Material app shell toolbar and navigation links', async () => {
     const fixture = TestBed.createComponent(App);
     await fixture.whenStable();
     const compiled = fixture.nativeElement as HTMLElement;
-    expect(compiled.querySelector('h1')?.textContent).toContain('Task Management System');
+    expect(compiled.querySelector('.brand-title')?.textContent).toContain('Task Management System');
+    expect(compiled.querySelector('nav[aria-label="Primary navigation"]')).toBeTruthy();
   });
 
   it('should provide HttpClient in application config', () => {

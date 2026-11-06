@@ -1,6 +1,39 @@
-<main class="app-main">
-  <header class="app-header">
-    <h1>{{ title() }}</h1>
-  </header>
-  <router-outlet />
-</main>
+<div class="app-shell">
+  <mat-toolbar class="app-toolbar" role="banner">
+    <div class="toolbar-container">
+      <a routerLink="/tasks" class="brand-link" aria-label="Task Management System Home">
+        <mat-icon aria-hidden="true">task_alt</mat-icon>
+        <span class="brand-title">{{ title() }}</span>
+      </a>
+
+      <nav class="toolbar-nav" aria-label="Primary navigation">
+        <a
+          mat-button
+          routerLink="/tasks"
+          routerLinkActive="active-link"
+          [routerLinkActiveOptions]="{ exact: true }"
+        >
+          <mat-icon aria-hidden="true">view_list</mat-icon>
+          <span>Tasks</span>
+        </a>
+        <a
+          mat-flat-button
+          routerLink="/tasks/new"
+          routerLinkActive="active-link"
+          class="new-task-btn"
+        >
+          <mat-icon aria-hidden="true">add</mat-icon>
+          <span>New Task</span>
+        </a>
+      </nav>
+    </div>
+  </mat-toolbar>
+
+  <main class="app-content" role="main">
+    <router-outlet />
+  </main>
+
+  <footer class="app-footer" role="contentinfo">
+    <span>Task Management System &bull; Laravel REST API &amp; Angular Material</span>
+  </footer>
+</div>

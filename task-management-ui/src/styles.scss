@@ -1,1 +1,46 @@
-/* You can add global styles to this file, and also import other style files */
+@use '@angular/material' as mat;
+
+html {
+  @include mat.theme((
+    color: (
+      theme-type: light,
+      primary: mat.$azure-palette,
+      tertiary: mat.$blue-palette,
+    ),
+    typography: Inter,
+    density: 0,
+  ));
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background-color: #f8fafc;
+  color: #0f172a;
+}
+
+.snackbar-success {
+  --mdc-snackbar-container-color: #166534;
+  --mdc-snackbar-supporting-text-color: #ffffff;
+  --mat-snack-bar-button-color: #bbf7d0;
+}
+
+.snackbar-error {
+  --mdc-snackbar-container-color: #991b1b;
+  --mdc-snackbar-supporting-text-color: #ffffff;
+  --mat-snack-bar-button-color: #fecaca;
+}
+
+.snackbar-info {
+  --mdc-snackbar-container-color: #1e3a8a;
+  --mdc-snackbar-supporting-text-color: #ffffff;
+  --mat-snack-bar-button-color: #bfdbfe;
+}
