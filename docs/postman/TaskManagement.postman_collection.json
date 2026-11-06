@@ -1,0 +1,201 @@
+{
+  "info": {
+    "name": "Task Management API",
+    "_postman_id": "6d3c9a52-7a51-4b8e-9b7e-3f6f1c2a9d10",
+    "description": "REST API for the Task Management System (Laravel + MySQL).\n\nRun the requests in order: **Create task** stores the new id in the `taskId` collection variable which later requests use.\n\nSet `baseUrl` to your API URL (default `http://localhost:8000/api`).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8000/api" },
+    { "key": "taskId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Health check",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Accept", "value": "application/json" }],
+        "url": { "raw": "{{baseUrl}}/health", "host": ["{{baseUrl}}"], "path": ["health"] }
+      },
+      "event": [{
+        "listen": "test",
+        "script": { "type": "text/javascript", "exec": [
+          "pm.test('200 OK', () => pm.response.to.have.status(200));",
+          "pm.test('database connected', () => pm.expect(pm.response.json().database).to.eql('connected'));"
+        ]}
+      }]
+    },
+    {
+      "name": "Tasks",
+      "item": [
+        {
+          "name": "Create task",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"title\": \"Learn Laravel\",\n    \"description\": \"Understand Laravel API development\",\n    \"status\": \"Pending\",\n    \"priority\": \"High\",\n    \"due_date\": \"2026-12-31\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/tasks", "host": ["{{baseUrl}}"], "path": ["tasks"] }
+          },
+          "event": [{
+            "listen": "test",
+            "script": { "type": "text/javascript", "exec": [
+              "pm.test('201 Created', () => pm.response.to.have.status(201));",
+              "const body = pm.response.json();",
+              "pm.test('success message', () => pm.expect(body.message).to.eql('Task created successfully'));",
+              "pm.test('returns created task', () => {",
+              "  pm.expect(body.data.title).to.eql('Learn Laravel');",
+              "  pm.expect(body.data.status).to.eql('Pending');",
+              "  pm.expect(body.data.priority).to.eql('High');",
+              "  pm.expect(body.data.due_date).to.eql('2026-12-31');",
+              "});",
+              "pm.collectionVariables.set('taskId', body.data.id);"
+            ]}
+          }]
+        },
+        {
+          "name": "Get all tasks",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/tasks", "host": ["{{baseUrl}}"], "path": ["tasks"] }
+          },
+          "event": [{
+            "listen": "test",
+            "script": { "type": "text/javascript", "exec": [
+              "pm.test('200 OK', () => pm.response.to.have.status(200));",
+              "pm.test('returns an array', () => pm.expect(pm.response.json()).to.be.an('array'));",
+              "pm.test('contains the created task', () => {",
+              "  const id = Number(pm.collectionVariables.get('taskId'));",
+              "  pm.expect(pm.response.json().map(t => t.id)).to.include(id);",
+              "});"
+            ]}
+          }]
+        },
+        {
+          "name": "Search tasks by title",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/tasks?search=laravel",
+              "host": ["{{baseUrl}}"], "path": ["tasks"],
+              "query": [{ "key": "search", "value": "laravel" }]
+            }
+          },
+          "event": [{
+            "listen": "test",
+            "script": { "type": "text/javascript", "exec": [
+              "pm.test('200 OK', () => pm.response.to.have.status(200));",
+              "pm.test('every title matches', () => {",
+              "  pm.response.json().forEach(t => pm.expect(t.title.toLowerCase()).to.include('laravel'));",
+              "});"
+            ]}
+          }]
+        },
+        {
+          "name": "Get one task",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/tasks/{{taskId}}", "host": ["{{baseUrl}}"], "path": ["tasks", "{{taskId}}"] }
+          },
+          "event": [{
+            "listen": "test",
+            "script": { "type": "text/javascript", "exec": [
+              "pm.test('200 OK', () => pm.response.to.have.status(200));",
+              "pm.test('returns the task', () => pm.expect(pm.response.json().id).to.eql(Number(pm.collectionVariables.get('taskId'))));"
+            ]}
+          }]
+        },
+        {
+          "name": "Update task",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"title\": \"Learn Laravel and Angular\",\n    \"status\": \"In Progress\",\n    \"priority\": \"High\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/tasks/{{taskId}}", "host": ["{{baseUrl}}"], "path": ["tasks", "{{taskId}}"] }
+          },
+          "event": [{
+            "listen": "test",
+            "script": { "type": "text/javascript", "exec": [
+              "pm.test('200 OK', () => pm.response.to.have.status(200));",
+              "const body = pm.response.json();",
+              "pm.test('success message', () => pm.expect(body.message).to.eql('Task updated successfully'));",
+              "pm.test('fields updated', () => {",
+              "  pm.expect(body.data.title).to.eql('Learn Laravel and Angular');",
+              "  pm.expect(body.data.status).to.eql('In Progress');",
+              "});"
+            ]}
+          }]
+        },
+        {
+          "name": "Create task - validation error",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"title\": \"\",\n    \"status\": \"Done\",\n    \"priority\": \"Urgent\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/tasks", "host": ["{{baseUrl}}"], "path": ["tasks"] }
+          },
+          "event": [{
+            "listen": "test",
+            "script": { "type": "text/javascript", "exec": [
+              "pm.test('422 Unprocessable', () => pm.response.to.have.status(422));",
+              "pm.test('field errors returned', () => {",
+              "  const errors = pm.response.json().errors;",
+              "  pm.expect(errors).to.have.keys('title', 'status', 'priority');",
+              "});"
+            ]}
+          }]
+        },
+        {
+          "name": "Delete task",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/tasks/{{taskId}}", "host": ["{{baseUrl}}"], "path": ["tasks", "{{taskId}}"] }
+          },
+          "event": [{
+            "listen": "test",
+            "script": { "type": "text/javascript", "exec": [
+              "pm.test('200 OK', () => pm.response.to.have.status(200));",
+              "pm.test('success message', () => pm.expect(pm.response.json().message).to.eql('Task deleted successfully'));"
+            ]}
+          }]
+        },
+        {
+          "name": "Get deleted task - not found",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/tasks/{{taskId}}", "host": ["{{baseUrl}}"], "path": ["tasks", "{{taskId}}"] }
+          },
+          "event": [{
+            "listen": "test",
+            "script": { "type": "text/javascript", "exec": [
+              "pm.test('404 Not Found', () => pm.response.to.have.status(404));",
+              "pm.test('message', () => pm.expect(pm.response.json().message).to.eql('Task not found.'));"
+            ]}
+          }]
+        }
+      ]
+    }
+  ]
+}

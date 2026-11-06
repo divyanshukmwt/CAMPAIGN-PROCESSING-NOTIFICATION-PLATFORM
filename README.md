@@ -48,7 +48,7 @@ MySQL (task_management)
 ├── task-management-api/   # Laravel REST API
 ├── task-management-ui/    # Angular application       (coming soon)
 ├── e2e/                   # End-to-end tests          (coming soon)
-└── docs/                  # Postman collection, deployment examples (coming soon)
+└── docs/                  # Postman collection (deployment examples coming soon)
 ```
 
 ## Prerequisites
@@ -113,14 +113,76 @@ Backend settings live in `task-management-api/.env` (never commit this file):
 
 ## API reference
 
-| Method | Endpoint | Description |
+Base URL: `http://localhost:8000/api` — send `Accept: application/json`.
+
+| Method | Endpoint | Description | Success |
+|---|---|---|---|
+| GET | `/health` | API and database health check | `200` |
+| GET | `/tasks` | List tasks, newest first (optional `?search=` by title) | `200` array |
+| GET | `/tasks/{id}` | Get a task | `200` object |
+| POST | `/tasks` | Create a task | `201` |
+| PUT / PATCH | `/tasks/{id}` | Update a task (partial updates allowed) | `200` |
+| DELETE | `/tasks/{id}` | Delete a task | `200` |
+
+### Task fields
+
+| Field | Type | Rules |
 |---|---|---|
-| GET | `/api/health` | API and database health check |
-| GET | `/api/tasks` | List tasks (optional `?search=`) *(coming soon)* |
-| GET | `/api/tasks/{id}` | Get a task *(coming soon)* |
-| POST | `/api/tasks` | Create a task *(coming soon)* |
-| PUT | `/api/tasks/{id}` | Update a task *(coming soon)* |
-| DELETE | `/api/tasks/{id}` | Delete a task *(coming soon)* |
+| `title` | string | required, max 255 |
+| `description` | string \| null | optional |
+| `status` | string | `Pending`, `In Progress`, `Completed` (default `Pending`) |
+| `priority` | string | `Low`, `Medium`, `High` (default `Medium`) |
+| `due_date` | `YYYY-MM-DD` \| null | optional, valid date |
+
+### Example — create a task
+
+```http
+POST /api/tasks
+Content-Type: application/json
+
+{
+  "title": "Learn Laravel",
+  "description": "Understand Laravel API development",
+  "status": "Pending",
+  "priority": "High",
+  "due_date": "2026-12-31"
+}
+```
+
+```json
+{
+  "message": "Task created successfully",
+  "data": {
+    "id": 1,
+    "title": "Learn Laravel",
+    "description": "Understand Laravel API development",
+    "status": "Pending",
+    "priority": "High",
+    "due_date": "2026-12-31",
+    "created_at": "2026-11-06T18:53:17+00:00",
+    "updated_at": "2026-11-06T18:53:17+00:00"
+  }
+}
+```
+
+### Errors
+
+All errors are JSON:
+
+| Status | When | Body |
+|---|---|---|
+| `404` | Task or route not found | `{ "message": "Task not found." }` |
+| `405` | Wrong HTTP method | `{ "message": "..." }` |
+| `422` | Validation failed | `{ "message": "...", "errors": { "title": ["..."] } }` |
+| `500` | Unexpected error | `{ "message": "An unexpected error occurred. Please try again later." }` |
+
+### Postman
+
+Import [`docs/postman/TaskManagement.postman_collection.json`](docs/postman/TaskManagement.postman_collection.json) into Postman and run the collection in order (it includes test assertions). It can also be run from the command line:
+
+```bash
+npx newman run docs/postman/TaskManagement.postman_collection.json
+```
 
 ## Testing
 
