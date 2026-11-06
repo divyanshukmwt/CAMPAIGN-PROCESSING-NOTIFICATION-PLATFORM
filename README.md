@@ -17,7 +17,7 @@ A full-stack task management application built with **Angular**, **Laravel** and
 - **Authentication** — secure login/registration with Laravel Sanctum (cookie-based SPA authentication).
 - **Authorisation** — every user sees and manages only their own tasks.
 - **Responsive UI** — Angular Material interface with loading, empty and error states.
-- **Security hardening** — explicit CORS origins, rate limiting, centralised JSON error handling.
+- **Security hardening** — explicit CORS origins, rate limiting (API, login, registration), security audit logging, centralised JSON error handling.
 
 ## Technology stack
 
@@ -109,6 +109,16 @@ Backend settings live in `task-management-api/.env` (never commit this file):
 | `CORS_ALLOWED_ORIGINS` | Comma-separated trusted frontend origins | `http://localhost:4200` |
 | `SANCTUM_STATEFUL_DOMAINS` | Hosts (with port) that use cookie-based SPA authentication | `localhost:4200,localhost:8000,localhost` |
 | `SESSION_DRIVER` / `SESSION_LIFETIME` | Session storage and lifetime (minutes) | `database` / `120` |
+| `RATE_LIMIT_API` | API requests per minute per user (or IP for guests) | `60` |
+| `RATE_LIMIT_LOGIN` | Login attempts per minute per email + IP | `5` |
+| `RATE_LIMIT_REGISTER` | Registrations per minute per IP | `10` |
+
+### Logging
+
+| Log file | Contents |
+|---|---|
+| `storage/logs/laravel.log` | Application log (task create/update/delete events, errors) |
+| `storage/logs/security-YYYY-MM-DD.log` | Security audit log: logins, failed logins (masked email), logouts, registrations, rate-limit violations — kept 30 days, never contains passwords |
 
 > Use `localhost` (not `127.0.0.1`) in the browser for both applications so cookie-based authentication works.
 
@@ -203,6 +213,7 @@ All errors are JSON:
 | `405` | Wrong HTTP method | `{ "message": "..." }` |
 | `419` | Missing or invalid CSRF token | `{ "message": "CSRF token mismatch." }` |
 | `422` | Validation failed / invalid credentials | `{ "message": "...", "errors": { "title": ["..."] } }` |
+| `429` | Rate limit exceeded (see `Retry-After` header) | `{ "message": "Too many login attempts. Please try again later." }` |
 | `500` | Unexpected error | `{ "message": "An unexpected error occurred. Please try again later." }` |
 
 ### Postman

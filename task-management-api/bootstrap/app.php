@@ -24,6 +24,9 @@ return Application::configure(basePath: dirname(__DIR__))
         // Sanctum SPA authentication: requests from SANCTUM_STATEFUL_DOMAINS
         // get session cookies + CSRF protection on the api route group.
         $middleware->statefulApi();
+
+        // Apply the named "api" rate limiter to every API route.
+        $middleware->throttleApi();
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         /*

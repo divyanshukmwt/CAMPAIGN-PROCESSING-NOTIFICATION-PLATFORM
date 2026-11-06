@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Models\User;
+use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
@@ -29,6 +30,8 @@ class AuthService
             'email' => $data['email'],
             'password' => $data['password'],
         ]);
+
+        event(new Registered($user));
 
         Auth::guard(self::GUARD)->login($user);
         $this->regenerateSession($request);

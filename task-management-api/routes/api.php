@@ -7,9 +7,11 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/health', HealthController::class)->name('api.health');
 
-// Authentication (Sanctum SPA, session cookie)
-Route::post('/register', [AuthController::class, 'register'])->name('auth.register');
-Route::post('/login', [AuthController::class, 'login'])->name('auth.login');
+// Authentication (Sanctum SPA, session cookie) — stricter rate limits
+Route::post('/register', [AuthController::class, 'register'])
+    ->middleware('throttle:register')->name('auth.register');
+Route::post('/login', [AuthController::class, 'login'])
+    ->middleware('throttle:login')->name('auth.login');
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout'])->name('auth.logout');

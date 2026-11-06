@@ -35,4 +35,13 @@ return [
         ],
     ],
 
+    /*
+    | Requests per minute for the named rate limiters (AppServiceProvider).
+    */
+    'rate_limits' => [
+        'api' => env('RATE_LIMIT_API', 60),
+        'login' => env('RATE_LIMIT_LOGIN', 5),
+        'register' => env('RATE_LIMIT_REGISTER', 10),
+    ],
+
 ];
