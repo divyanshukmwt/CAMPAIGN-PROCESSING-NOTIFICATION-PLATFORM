@@ -2,8 +2,6 @@
 
 A full-stack task management application built with **Angular**, **Laravel** and **MySQL** using a clean three-tier architecture. Users can create, view, search, update and delete their tasks, organised by status and priority, through a secure REST API.
 
-> **Project status:** under active development. Sections marked *(coming soon)* describe functionality that is planned but not yet available.
-
 ---
 
 ## Features
@@ -47,8 +45,8 @@ MySQL (task_management)
 .
 ├── task-management-api/   # Laravel REST API
 ├── task-management-ui/    # Angular application
-├── e2e/                   # End-to-end tests          (coming soon)
-└── docs/                  # Postman collection (deployment examples coming soon)
+├── e2e/                   # Playwright end-to-end tests
+└── docs/                  # Postman collection & deployment examples
 ```
 
 ## Prerequisites
@@ -247,6 +245,37 @@ Frontend unit tests run with the Angular CLI test runner:
 cd task-management-ui
 npm test -- --watch=false
 ```
+
+End-to-end (E2E) integration tests run with Playwright against both running servers (`localhost:8000` and `localhost:4200`):
+
+```bash
+cd e2e
+npm install
+npx playwright test
+```
+
+## Production Deployment
+
+Production deployment examples and hardening checklists are provided in [`docs/deployment/`](docs/deployment/):
+
+- [`docs/deployment/mysql-least-privilege.sql`](docs/deployment/mysql-least-privilege.sql) — creates the `task_management` database and a dedicated least-privilege MySQL user (`SELECT, INSERT, UPDATE, DELETE, CREATE, ALTER, INDEX, REFERENCES`).
+- [`docs/deployment/nginx.conf.example`](docs/deployment/nginx.conf.example) — HTTPS Nginx reverse-proxy configuration serving the Angular production bundle (`ng build --configuration production`) and forwarding `/api` and `/sanctum` to PHP-FPM.
+
+### Production checklist
+
+1. Set `APP_ENV=production` and `APP_DEBUG=false` in `task-management-api/.env`.
+2. Provision MySQL with [`docs/deployment/mysql-least-privilege.sql`](docs/deployment/mysql-least-privilege.sql) and run `php artisan migrate --force`.
+3. Cache Laravel configuration, routes and views:
+   ```bash
+   php artisan config:cache
+   php artisan route:cache
+   php artisan view:cache
+   ```
+4. Build the Angular production bundle:
+   ```bash
+   cd task-management-ui
+   npx ng build --configuration production
+   ```
 
 ## License
 

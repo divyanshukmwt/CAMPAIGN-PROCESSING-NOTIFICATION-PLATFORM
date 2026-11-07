@@ -1,0 +1,78 @@
+# ==============================================================================
+# Task Management System — Example Production Nginx Configuration
+# ==============================================================================
+# Serves the compiled Angular SPA (`task-management-ui/dist/task-management-ui/browser`)
+# and reverse-proxies `/api` and `/sanctum` requests to the Laravel PHP-FPM
+# backend (`task-management-api/public`) on the same origin over HTTPS.
+# ==============================================================================
+
+server {
+    listen 80;
+    listen [::]:80;
+    server_name tasks.example.com;
+
+    # Redirect all HTTP traffic to HTTPS
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name tasks.example.com;
+
+    # TLS certificates (e.g., Let's Encrypt / Certbot)
+    ssl_certificate     /etc/letsencrypt/live/tasks.example.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/tasks.example.com/privkey.pem;
+    ssl_protocols       TLSv1.2 TLSv1.3;
+    ssl_prefer_server_ciphers on;
+
+    # Security headers
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+
+    # Angular production build root
+    root /var/www/task-management/task-management-ui/dist/task-management-ui/browser;
+    index index.html;
+
+    charset utf-8;
+    client_max_body_size 10M;
+
+    # --------------------------------------------------------------------------
+    # 1. Laravel API & Sanctum CSRF endpoints -> PHP-FPM
+    # --------------------------------------------------------------------------
+    location ~ ^/(api|sanctum|up)(/|$) {
+        root /var/www/task-management/task-management-api/public;
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+
+    location ~ ^/index\.php(/|$) {
+        root /var/www/task-management/task-management-api/public;
+        fastcgi_pass unix:/run/php/php8.4-fpm.sock;
+        fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
+        include fastcgi_params;
+        fastcgi_hide_header X-Powered-By;
+    }
+
+    # --------------------------------------------------------------------------
+    # 2. Angular SPA static assets (hashed filenames cached aggressively)
+    # --------------------------------------------------------------------------
+    location ~* \.(?:js|css|woff2?|ttf|eot|ico|svg|png|jpg|jpeg|gif|webp)$ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+        try_files $uri =404;
+    }
+
+    # --------------------------------------------------------------------------
+    # 3. Angular HTML5 History Mode fallback
+    # --------------------------------------------------------------------------
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    # Block access to hidden files (.env, .git, .htaccess)
+    location ~ /\.(?!well-known).* {
+        deny all;
+    }
+}
