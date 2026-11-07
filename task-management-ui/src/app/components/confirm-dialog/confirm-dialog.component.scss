@@ -1,0 +1,17 @@
+.dialog-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.warn-icon {
+  color: #dc2626;
+}
+
+.dialog-content p {
+  margin: 0;
+  color: #475569;
+  line-height: 1.5;
+}

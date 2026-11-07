@@ -4,6 +4,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
@@ -15,6 +16,10 @@ import { debounceTime, distinctUntilChanged } from 'rxjs';
 import { NotificationService } from '../../core/services/notification.service';
 import { Task, TaskPriority, TaskStatus } from '../../models/task';
 import { TaskService } from '../../services/task.service';
+import {
+  ConfirmDialogComponent,
+  ConfirmDialogData,
+} from '../confirm-dialog/confirm-dialog.component';
 
 @Component({
   selector: 'app-task-list',
@@ -25,6 +30,7 @@ import { TaskService } from '../../services/task.service';
     MatCardModule,
     MatButtonModule,
     MatIconModule,
+    MatDialogModule,
     MatFormFieldModule,
     MatInputModule,
     MatProgressSpinnerModule,
@@ -37,6 +43,7 @@ import { TaskService } from '../../services/task.service';
 export class TaskListComponent implements OnInit {
   private readonly taskService = inject(TaskService);
   private readonly notification = inject(NotificationService);
+  private readonly dialog = inject(MatDialog);
   private readonly destroyRef = inject(DestroyRef);
 
   readonly tasks = signal<Task[]>([]);
@@ -92,14 +99,32 @@ export class TaskListComponent implements OnInit {
   }
 
   deleteTask(task: Task): void {
-    this.taskService
-      .deleteTask(task.id)
+    const dialogData: ConfirmDialogData = {
+      title: 'Delete Task',
+      message: `Are you sure you want to delete "${task.title}"? This action cannot be undone.`,
+      confirmLabel: 'Delete Task',
+      cancelLabel: 'Cancel',
+    };
+
+    this.dialog
+      .open(ConfirmDialogComponent, {
+        width: '420px',
+        data: dialogData,
+      })
+      .afterClosed()
       .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (response) => {
-          this.notification.success(response.message || 'Task deleted successfully');
-          this.tasks.update((current) => current.filter((item) => item.id !== task.id));
-        },
+      .subscribe((confirmed) => {
+        if (confirmed) {
+          this.taskService
+            .deleteTask(task.id)
+            .pipe(takeUntilDestroyed(this.destroyRef))
+            .subscribe({
+              next: (response) => {
+                this.notification.success(response.message || 'Task deleted successfully');
+                this.tasks.update((current) => current.filter((item) => item.id !== task.id));
+              },
+            });
+        }
       });
   }
 

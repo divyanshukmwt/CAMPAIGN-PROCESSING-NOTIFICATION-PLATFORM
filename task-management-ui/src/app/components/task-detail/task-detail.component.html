@@ -1,0 +1,104 @@
+<section class="task-detail-page" aria-labelledby="task-detail-heading">
+  <div class="page-header">
+    <a mat-button routerLink="/tasks" class="back-link" data-testid="back-to-tasks-link">
+      <mat-icon aria-hidden="true">arrow_back</mat-icon>
+      <span>Back to Tasks</span>
+    </a>
+  </div>
+
+  @if (loading()) {
+    <mat-card class="state-card" appearance="outlined" data-testid="task-detail-loading">
+      <mat-progress-spinner mode="indeterminate" diameter="44" aria-label="Loading task details" />
+      <p>Loading task details...</p>
+    </mat-card>
+  } @else if (error()) {
+    <mat-card class="state-card" appearance="outlined" role="alert" data-testid="task-detail-error">
+      <mat-icon class="error-icon" aria-hidden="true">error_outline</mat-icon>
+      <h1 id="task-detail-heading" class="error-title">Task Not Found</h1>
+      <p class="error-message">{{ error() }}</p>
+      <a mat-flat-button routerLink="/tasks">Return to Task List</a>
+    </mat-card>
+  } @else if (task(); as currentTask) {
+    <mat-card class="detail-card" appearance="outlined" data-testid="task-detail-card">
+      <div class="detail-header">
+        <div>
+          <div class="badges-row">
+            <span class="badge" [class]="statusClass(currentTask.status)" data-testid="detail-status">
+              {{ currentTask.status }}
+            </span>
+            <span class="badge" [class]="priorityClass(currentTask.priority)" data-testid="detail-priority">
+              {{ currentTask.priority }} Priority
+            </span>
+          </div>
+          <h1 id="task-detail-heading" class="task-title" data-testid="detail-title">
+            {{ currentTask.title }}
+          </h1>
+        </div>
+
+        <div class="detail-actions">
+          <a
+            mat-stroked-button
+            [routerLink]="['/tasks', currentTask.id, 'edit']"
+            data-testid="detail-edit-btn"
+          >
+            <mat-icon aria-hidden="true">edit</mat-icon>
+            <span>Edit</span>
+          </a>
+          <button
+            mat-flat-button
+            color="warn"
+            type="button"
+            (click)="confirmDelete()"
+            data-testid="detail-delete-btn"
+          >
+            <mat-icon aria-hidden="true">delete_outline</mat-icon>
+            <span>Delete</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="detail-section">
+        <h2 class="section-heading">Description</h2>
+        @if (currentTask.description) {
+          <p class="description-text" data-testid="detail-description">
+            {{ currentTask.description }}
+          </p>
+        } @else {
+          <p class="empty-description">No description provided for this task.</p>
+        }
+      </div>
+
+      <dl class="metadata-grid">
+        <div class="metadata-item">
+          <dt>Due Date</dt>
+          <dd data-testid="detail-due-date">
+            @if (currentTask.due_date) {
+              {{ currentTask.due_date | date: 'longDate' }}
+            } @else {
+              No due date set
+            }
+          </dd>
+        </div>
+
+        <div class="metadata-item">
+          <dt>Task ID</dt>
+          <dd>#{{ currentTask.id }}</dd>
+        </div>
+
+        @if (currentTask.created_at) {
+          <div class="metadata-item">
+            <dt>Created</dt>
+            <dd>{{ currentTask.created_at | date: 'medium' }}</dd>
+          </div>
+        }
+
+        @if (currentTask.updated_at) {
+          <div class="metadata-item">
+            <dt>Last Updated</dt>
+            <dd>{{ currentTask.updated_at | date: 'medium' }}</dd>
+          </div>
+        }
+      </dl>
+    </mat-card>
+  }
+</section>
