@@ -21,6 +21,9 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // Trust reverse-proxy headers (Railway / Render HTTPS termination).
+        $middleware->trustProxies(at: '*');
+
         // Sanctum SPA authentication: requests from SANCTUM_STATEFUL_DOMAINS
         // get session cookies + CSRF protection on the api route group.
         $middleware->statefulApi();

@@ -1,0 +1,11 @@
+.git
+.gitignore
+node_modules
+**/node_modules
+task-management-api/vendor
+task-management-api/.env
+task-management-ui/dist
+task-management-ui/.angular
+e2e
+docs
+*.md
