@@ -1,0 +1,176 @@
+.task-list-page {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.page-title {
+  margin: 0;
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.page-subtitle {
+  margin: 0.25rem 0 0;
+  color: #64748b;
+  font-size: 0.9375rem;
+}
+
+.filter-card {
+  padding: 1rem;
+  background: #ffffff;
+}
+
+.search-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.search-field {
+  flex: 1;
+  min-width: 240px;
+}
+
+.state-card {
+  padding: 3rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 0.75rem;
+  background: #ffffff;
+}
+
+.state-icon {
+  font-size: 3rem;
+  width: 3rem;
+  height: 3rem;
+  color: #64748b;
+
+  &.error-icon {
+    color: #dc2626;
+  }
+}
+
+.state-title {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.state-message {
+  margin: 0 0 0.5rem;
+  color: #64748b;
+  max-width: 420px;
+}
+
+.table-card {
+  overflow: hidden;
+  background: #ffffff;
+}
+
+.table-responsive {
+  overflow-x: auto;
+}
+
+.tasks-table {
+  width: 100%;
+
+  th.mat-mdc-header-cell {
+    font-weight: 600;
+    color: #475569;
+    background: #f8fafc;
+  }
+
+  td.mat-mdc-cell {
+    padding-top: 0.875rem;
+    padding-bottom: 0.875rem;
+  }
+}
+
+.task-title-link {
+  color: #0f172a;
+  font-weight: 600;
+  text-decoration: none;
+
+  &:hover {
+    color: #0284c7;
+    text-decoration: underline;
+  }
+}
+
+.task-description {
+  margin: 0.25rem 0 0;
+  font-size: 0.8125rem;
+  color: #64748b;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.625rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.badge-status-pending {
+  background: #f1f5f9;
+  color: #334155;
+}
+
+.badge-status-in-progress {
+  background: #e0f2fe;
+  color: #0369a1;
+}
+
+.badge-status-completed {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.badge-priority-low {
+  background: #f8fafc;
+  color: #475569;
+  border: 1px solid #cbd5e1;
+}
+
+.badge-priority-medium {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.badge-priority-high {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.no-due-date {
+  color: #94a3b8;
+  font-style: italic;
+  font-size: 0.8125rem;
+}
+
+.actions-header,
+.actions-cell {
+  text-align: right;
+  white-space: nowrap;
+}

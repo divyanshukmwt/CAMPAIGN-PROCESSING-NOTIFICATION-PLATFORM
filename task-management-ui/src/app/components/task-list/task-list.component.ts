@@ -1,0 +1,127 @@
+import { DatePipe } from '@angular/common';
+import { Component, DestroyRef, OnInit, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { FormControl, ReactiveFormsModule } from '@angular/forms';
+import { MatButtonModule } from '@angular/material/button';
+import { MatCardModule } from '@angular/material/card';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatIconModule } from '@angular/material/icon';
+import { MatInputModule } from '@angular/material/input';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatTableModule } from '@angular/material/table';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { RouterLink } from '@angular/router';
+import { debounceTime, distinctUntilChanged } from 'rxjs';
+import { NotificationService } from '../../core/services/notification.service';
+import { Task, TaskPriority, TaskStatus } from '../../models/task';
+import { TaskService } from '../../services/task.service';
+
+@Component({
+  selector: 'app-task-list',
+  imports: [
+    DatePipe,
+    ReactiveFormsModule,
+    RouterLink,
+    MatCardModule,
+    MatButtonModule,
+    MatIconModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatProgressSpinnerModule,
+    MatTableModule,
+    MatTooltipModule,
+  ],
+  templateUrl: './task-list.component.html',
+  styleUrl: './task-list.component.scss',
+})
+export class TaskListComponent implements OnInit {
+  private readonly taskService = inject(TaskService);
+  private readonly notification = inject(NotificationService);
+  private readonly destroyRef = inject(DestroyRef);
+
+  readonly tasks = signal<Task[]>([]);
+  readonly loading = signal<boolean>(true);
+  readonly error = signal<string | null>(null);
+  readonly searchControl = new FormControl<string>('', { nonNullable: true });
+
+  readonly displayedColumns: readonly string[] = [
+    'title',
+    'status',
+    'priority',
+    'due_date',
+    'actions',
+  ];
+
+  ngOnInit(): void {
+    this.loadTasks();
+
+    this.searchControl.valueChanges
+      .pipe(debounceTime(300), distinctUntilChanged(), takeUntilDestroyed(this.destroyRef))
+      .subscribe((term) => {
+        this.loadTasks(term);
+      });
+  }
+
+  loadTasks(search = this.searchControl.value): void {
+    this.loading.set(true);
+    this.error.set(null);
+
+    this.taskService
+      .getTasks(search)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (tasks) => {
+          this.tasks.set(tasks);
+          this.loading.set(false);
+        },
+        error: (err) => {
+          const message =
+            err?.error?.message || 'Unable to load tasks. Please try again.';
+          this.error.set(message);
+          this.loading.set(false);
+        },
+      });
+  }
+
+  clearSearch(): void {
+    if (this.searchControl.value) {
+      this.searchControl.setValue('');
+    } else {
+      this.loadTasks('');
+    }
+  }
+
+  deleteTask(task: Task): void {
+    this.taskService
+      .deleteTask(task.id)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (response) => {
+          this.notification.success(response.message || 'Task deleted successfully');
+          this.tasks.update((current) => current.filter((item) => item.id !== task.id));
+        },
+      });
+  }
+
+  statusClass(status: TaskStatus): string {
+    switch (status) {
+      case 'Completed':
+        return 'badge-status-completed';
+      case 'In Progress':
+        return 'badge-status-in-progress';
+      default:
+        return 'badge-status-pending';
+    }
+  }
+
+  priorityClass(priority: TaskPriority): string {
+    switch (priority) {
+      case 'High':
+        return 'badge-priority-high';
+      case 'Medium':
+        return 'badge-priority-medium';
+      default:
+        return 'badge-priority-low';
+    }
+  }
+}
