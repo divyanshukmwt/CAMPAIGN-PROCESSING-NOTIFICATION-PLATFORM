@@ -1,0 +1,134 @@
+<section class="task-form-page" aria-labelledby="task-form-heading">
+  <div class="page-header">
+    <a mat-button routerLink="/tasks" class="back-link" data-testid="back-to-tasks-link">
+      <mat-icon aria-hidden="true">arrow_back</mat-icon>
+      <span>Back to Tasks</span>
+    </a>
+    <h1 id="task-form-heading" class="page-title">
+      {{ isEditMode() ? 'Edit Task' : 'Create New Task' }}
+    </h1>
+  </div>
+
+  @if (loadingTask()) {
+    <mat-card class="state-card" appearance="outlined" data-testid="task-form-loading">
+      <mat-progress-spinner mode="indeterminate" diameter="44" aria-label="Loading task" />
+      <p>Loading task details...</p>
+    </mat-card>
+  } @else if (loadError()) {
+    <mat-card class="state-card" appearance="outlined" role="alert" data-testid="task-form-error">
+      <mat-icon class="error-icon" aria-hidden="true">error_outline</mat-icon>
+      <h2>Unable to load task</h2>
+      <p>{{ loadError() }}</p>
+      <a mat-flat-button routerLink="/tasks">Return to Task List</a>
+    </mat-card>
+  } @else {
+    <mat-card class="form-card" appearance="outlined">
+      <form [formGroup]="form" (ngSubmit)="onSubmit()" novalidate data-testid="task-form">
+        <div class="form-grid">
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Title</mat-label>
+            <input
+              matInput
+              type="text"
+              formControlName="title"
+              placeholder="e.g., Complete Laravel API"
+              maxlength="255"
+              required
+              data-testid="task-title-input"
+            />
+            <mat-hint align="end">{{ form.controls.title.value.length }}/255</mat-hint>
+            @if (form.controls.title.hasError('required')) {
+              <mat-error data-testid="title-error">Title is required.</mat-error>
+            } @else if (form.controls.title.hasError('maxlength')) {
+              <mat-error data-testid="title-error">Title cannot exceed 255 characters.</mat-error>
+            } @else if (form.controls.title.hasError('serverError')) {
+              <mat-error data-testid="title-error">
+                {{ form.controls.title.getError('serverError') }}
+              </mat-error>
+            }
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Description</mat-label>
+            <textarea
+              matInput
+              formControlName="description"
+              rows="4"
+              placeholder="Provide additional context, acceptance criteria, or notes..."
+              data-testid="task-description-input"
+            ></textarea>
+            @if (form.controls.description.hasError('serverError')) {
+              <mat-error data-testid="description-error">
+                {{ form.controls.description.getError('serverError') }}
+              </mat-error>
+            }
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Status</mat-label>
+            <mat-select formControlName="status" data-testid="task-status-select">
+              @for (status of statuses; track status) {
+                <mat-option [value]="status">{{ status }}</mat-option>
+              }
+            </mat-select>
+            @if (form.controls.status.hasError('serverError')) {
+              <mat-error data-testid="status-error">
+                {{ form.controls.status.getError('serverError') }}
+              </mat-error>
+            }
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Priority</mat-label>
+            <mat-select formControlName="priority" data-testid="task-priority-select">
+              @for (priority of priorities; track priority) {
+                <mat-option [value]="priority">{{ priority }}</mat-option>
+              }
+            </mat-select>
+            @if (form.controls.priority.hasError('serverError')) {
+              <mat-error data-testid="priority-error">
+                {{ form.controls.priority.getError('serverError') }}
+              </mat-error>
+            }
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Due Date</mat-label>
+            <input
+              matInput
+              type="date"
+              formControlName="due_date"
+              data-testid="task-due-date-input"
+            />
+            @if (form.controls.due_date.hasError('serverError')) {
+              <mat-error data-testid="due-date-error">
+                {{ form.controls.due_date.getError('serverError') }}
+              </mat-error>
+            }
+          </mat-form-field>
+        </div>
+
+        <div class="form-actions">
+          <a mat-stroked-button routerLink="/tasks" data-testid="cancel-task-btn">Cancel</a>
+          <button
+            mat-flat-button
+            type="submit"
+            [disabled]="submitting()"
+            data-testid="submit-task-btn"
+          >
+            <mat-icon aria-hidden="true">{{ isEditMode() ? 'save' : 'add_task' }}</mat-icon>
+            <span>
+              {{
+                submitting()
+                  ? 'Saving...'
+                  : isEditMode()
+                    ? 'Update Task'
+                    : 'Create Task'
+              }}
+            </span>
+          </button>
+        </div>
+      </form>
+    </mat-card>
+  }
+</section>
