@@ -81,7 +81,7 @@ describe('TaskService', () => {
     expect(req.request.body).toEqual(payload);
     req.flush({
       message: 'Task created successfully',
-      task: { ...sampleTask, ...payload, id: 2 },
+      data: { ...sampleTask, ...payload, id: 2 },
     });
 
     expect(responseMessage).toBe('Task created successfully');
@@ -95,14 +95,14 @@ describe('TaskService', () => {
     };
 
     let updatedStatus = '';
-    service.updateTask(1, payload).subscribe((res) => (updatedStatus = res.task.status));
+    service.updateTask(1, payload).subscribe((res) => (updatedStatus = res.data.status));
 
     const req = httpMock.expectOne(`${baseUrl}/1`);
     expect(req.request.method).toBe('PUT');
     expect(req.request.body).toEqual(payload);
     req.flush({
       message: 'Task updated successfully',
-      task: { ...sampleTask, ...payload },
+      data: { ...sampleTask, ...payload },
     });
 
     expect(updatedStatus).toBe('Completed');

@@ -40,13 +40,13 @@ describe('TaskFormComponent', () => {
       createTask: vi.fn().mockReturnValue(
         of({
           message: 'Task created successfully',
-          task: existingTask,
+          data: existingTask,
         }),
       ),
       updateTask: vi.fn().mockReturnValue(
         of({
           message: 'Task updated successfully',
-          task: existingTask,
+          data: existingTask,
         }),
       ),
     };

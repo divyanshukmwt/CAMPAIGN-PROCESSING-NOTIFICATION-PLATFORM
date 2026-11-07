@@ -46,7 +46,7 @@ MySQL (task_management)
 ```
 .
 ├── task-management-api/   # Laravel REST API
-├── task-management-ui/    # Angular application       (coming soon)
+├── task-management-ui/    # Angular application
 ├── e2e/                   # End-to-end tests          (coming soon)
 └── docs/                  # Postman collection (deployment examples coming soon)
 ```
@@ -94,7 +94,13 @@ Verify the API is running: <http://localhost:8000/api/health>
 
 ### 3. Frontend (Angular)
 
-*(coming soon)*
+```bash
+cd task-management-ui
+npm install
+npm start
+```
+
+Open <http://localhost:4200> in your browser. Sign in with the demo account (`test@example.com` / `Password123`) or register a new account.
 
 ## Configuration
 
@@ -124,7 +130,9 @@ Backend settings live in `task-management-api/.env` (never commit this file):
 
 ## Usage
 
-*(coming soon)*
+1. Start the Laravel API on `http://localhost:8000` and the Angular application on `http://localhost:4200`.
+2. Navigate to `http://localhost:4200/login` (or `/register` to create a new account).
+3. From the **Tasks** view (`/tasks`), search tasks by title, create new tasks (`/tasks/new`), inspect full task details (`/tasks/:id`), edit existing tasks (`/tasks/:id/edit`), or delete tasks with a confirmation dialog.
 
 ## API reference
 
@@ -231,6 +239,13 @@ Backend tests run against the dedicated `task_management_test` MySQL database:
 ```bash
 cd task-management-api
 php artisan test
+```
+
+Frontend unit tests run with the Angular CLI test runner:
+
+```bash
+cd task-management-ui
+npm test -- --watch=false
 ```
 
 ## License

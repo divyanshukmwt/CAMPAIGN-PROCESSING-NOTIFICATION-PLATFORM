@@ -27,7 +27,7 @@ export interface TaskPayload {
 
 export interface TaskMutationResponse {
   message: string;
-  task: Task;
+  data: Task;
 }
 
 export interface TaskDeleteResponse {

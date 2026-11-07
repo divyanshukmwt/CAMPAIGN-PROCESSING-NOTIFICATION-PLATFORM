@@ -7,24 +7,61 @@
       </a>
 
       <nav class="toolbar-nav" aria-label="Primary navigation">
-        <a
-          mat-button
-          routerLink="/tasks"
-          routerLinkActive="active-link"
-          [routerLinkActiveOptions]="{ exact: true }"
-        >
-          <mat-icon aria-hidden="true">view_list</mat-icon>
-          <span>Tasks</span>
-        </a>
-        <a
-          mat-flat-button
-          routerLink="/tasks/new"
-          routerLinkActive="active-link"
-          class="new-task-btn"
-        >
-          <mat-icon aria-hidden="true">add</mat-icon>
-          <span>New Task</span>
-        </a>
+        @if (authService.currentUser(); as user) {
+          <a
+            mat-button
+            routerLink="/tasks"
+            routerLinkActive="active-link"
+            [routerLinkActiveOptions]="{ exact: true }"
+            data-testid="nav-tasks-link"
+          >
+            <mat-icon aria-hidden="true">view_list</mat-icon>
+            <span>Tasks</span>
+          </a>
+          <a
+            mat-flat-button
+            routerLink="/tasks/new"
+            routerLinkActive="active-link"
+            class="new-task-btn"
+            data-testid="nav-new-task-link"
+          >
+            <mat-icon aria-hidden="true">add</mat-icon>
+            <span>New Task</span>
+          </a>
+          <span class="user-chip" data-testid="nav-user-name">
+            <mat-icon aria-hidden="true">account_circle</mat-icon>
+            <span>{{ user.name }}</span>
+          </span>
+          <button
+            mat-button
+            type="button"
+            (click)="logout()"
+            aria-label="Sign out"
+            data-testid="nav-logout-btn"
+          >
+            <mat-icon aria-hidden="true">logout</mat-icon>
+            <span>Logout</span>
+          </button>
+        } @else {
+          <a
+            mat-button
+            routerLink="/login"
+            routerLinkActive="active-link"
+            data-testid="nav-login-link"
+          >
+            <mat-icon aria-hidden="true">login</mat-icon>
+            <span>Sign In</span>
+          </a>
+          <a
+            mat-flat-button
+            routerLink="/register"
+            routerLinkActive="active-link"
+            data-testid="nav-register-link"
+          >
+            <mat-icon aria-hidden="true">person_add</mat-icon>
+            <span>Register</span>
+          </a>
+        }
       </nav>
     </div>
   </mat-toolbar>

@@ -1,14 +1,25 @@
 import { HttpErrorResponse, HttpInterceptorFn } from '@angular/common/http';
 import { inject } from '@angular/core';
+import { Router } from '@angular/router';
 import { catchError, throwError } from 'rxjs';
+import { AuthService } from '../../services/auth.service';
 import { NotificationService } from '../services/notification.service';
 
 export const errorInterceptor: HttpInterceptorFn = (req, next) => {
   const notification = inject(NotificationService);
+  const authService = inject(AuthService);
+  const router = inject(Router);
 
   return next(req).pipe(
     catchError((error: HttpErrorResponse) => {
       const skipNotification = req.headers.get('X-Skip-Error-Notification') === 'true';
+
+      if (error.status === 401) {
+        authService.clearSession();
+        if (!req.url.endsWith('/api/user') && !req.url.endsWith('/api/login')) {
+          void router.navigate(['/login']);
+        }
+      }
 
       if (!skipNotification) {
         const apiMessage: string | undefined = error.error?.message;
