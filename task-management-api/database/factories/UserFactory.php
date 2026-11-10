@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Enums\UserRole;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Facades\Hash;
@@ -29,6 +30,7 @@ class UserFactory extends Factory
             'email' => fake()->unique()->safeEmail(),
             'email_verified_at' => now(),
             'password' => static::$password ??= Hash::make('password'),
+            'roles' => [UserRole::User->value],
             'remember_token' => Str::random(10),
         ];
     }
@@ -40,6 +42,26 @@ class UserFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'email_verified_at' => null,
+        ]);
+    }
+
+    /**
+     * Account with only the `admin` role.
+     */
+    public function admin(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'roles' => [UserRole::Admin->value],
+        ]);
+    }
+
+    /**
+     * Dual-role account holding both `admin` and `user` roles.
+     */
+    public function dualRole(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'roles' => [UserRole::Admin->value, UserRole::User->value],
         ]);
     }
 }

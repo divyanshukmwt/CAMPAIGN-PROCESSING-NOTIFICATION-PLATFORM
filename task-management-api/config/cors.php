@@ -32,7 +32,7 @@ return [
 
     'allowed_headers' => ['*'],
 
-    'exposed_headers' => [],
+    'exposed_headers' => ['X-Tab-Token'],
 
     'max_age' => 0,
 

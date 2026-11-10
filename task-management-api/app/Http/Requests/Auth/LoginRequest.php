@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Auth;
 
+use App\Enums\UserRole;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 /**
- * Validates login credentials (POST /api/login).
+ * Validates login credentials and selected session role (POST /api/login).
  */
 class LoginRequest extends FormRequest
 {
@@ -18,13 +20,23 @@ class LoginRequest extends FormRequest
 
     protected function prepareForValidation(): void
     {
+        $merged = [];
+
         if (is_string($this->email)) {
-            $this->merge(['email' => strtolower(trim($this->email))]);
+            $merged['email'] = strtolower(trim($this->email));
+        }
+
+        if (is_string($this->role)) {
+            $merged['role'] = strtolower(trim($this->role));
+        }
+
+        if ($merged !== []) {
+            $this->merge($merged);
         }
     }
 
     /**
-     * @return array<string, array<int, string>>
+     * @return array<string, array<int, mixed>>
      */
     public function rules(): array
     {
@@ -32,6 +44,7 @@ class LoginRequest extends FormRequest
             'email' => ['required', 'string', 'email'],
             'password' => ['required', 'string'],
             'remember' => ['sometimes', 'boolean'],
+            'role' => ['sometimes', 'string', Rule::enum(UserRole::class)],
         ];
     }
 }

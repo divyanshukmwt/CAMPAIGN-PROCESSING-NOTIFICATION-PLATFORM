@@ -7,16 +7,19 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Requests\Auth\RegisterRequest;
+use App\Http\Requests\Auth\SwitchRoleRequest;
 use App\Http\Resources\UserResource;
 use App\Services\AuthService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 /**
- * Session-based authentication endpoints for the Angular SPA (Laravel Sanctum).
+ * Session-based authentication and RBAC role management endpoints
+ * for the Angular SPA (Laravel Sanctum).
  *
  * The client first calls GET /sanctum/csrf-cookie, then sends credentials
- * with the X-XSRF-TOKEN header; Laravel responds with an HttpOnly session cookie.
+ * with the X-XSRF-TOKEN header; Laravel responds with an HttpOnly session cookie
+ * and a per-tab cryptographic token (`tab_token`).
  */
 class AuthController extends Controller
 {
@@ -30,11 +33,13 @@ class AuthController extends Controller
     public function register(RegisterRequest $request): JsonResponse
     {
         $user = $this->authService->register($request->validated(), $request);
+        $tabToken = $this->authService->currentTabToken($request);
 
         return response()->json([
             'message' => 'Registration successful',
             'user' => new UserResource($user),
-        ], 201);
+            'tab_token' => $tabToken,
+        ], 201)->withHeaders($tabToken ? ['X-Tab-Token' => $tabToken] : []);
     }
 
     /**
@@ -47,12 +52,34 @@ class AuthController extends Controller
             $request->validated('password'),
             $request->boolean('remember'),
             $request,
+            $request->validated('role'),
         );
+        $tabToken = $this->authService->currentTabToken($request);
 
         return response()->json([
             'message' => 'Login successful',
             'user' => new UserResource($user),
-        ]);
+            'tab_token' => $tabToken,
+        ])->withHeaders($tabToken ? ['X-Tab-Token' => $tabToken] : []);
+    }
+
+    /**
+     * POST /api/auth/switch-role
+     */
+    public function switchRole(SwitchRoleRequest $request): JsonResponse
+    {
+        $user = $this->authService->switchRole(
+            $request->user(),
+            $request->validated('role'),
+            $request,
+        );
+        $tabToken = $this->authService->currentTabToken($request);
+
+        return response()->json([
+            'message' => 'Role switched successfully',
+            'user' => new UserResource($user),
+            'tab_token' => $tabToken,
+        ])->withHeaders($tabToken ? ['X-Tab-Token' => $tabToken] : []);
     }
 
     /**

@@ -146,10 +146,11 @@ The API uses **Laravel Sanctum cookie-based SPA authentication** (HttpOnly sessi
 
 | Method | Endpoint | Description | Success |
 |---|---|---|---|
-| POST | `/register` | Register (`name`, `email`, `password`, `password_confirmation`) and log in | `201` |
-| POST | `/login` | Log in (`email`, `password`, optional `remember`) | `200` |
+| POST | `/register` | Register (`name`, `email`, `password`, `password_confirmation`, optional `role`, `dual_role`) and log in | `201` |
+| POST | `/login` | Log in (`email`, `password`, optional `role`: `admin` \| `user`, `remember`) | `200` |
+| POST | `/auth/switch-role` | Switch active role (`role`: `admin` \| `user`) for dual-role accounts | `200` |
 | POST | `/logout` | Log out (authenticated) | `200` |
-| GET | `/user` | Current user (authenticated) | `200` |
+| GET | `/user` | Current user with `roles` and `active_role` (authenticated) | `200` |
 
 Passwords must be at least 8 characters and contain letters and numbers.
 

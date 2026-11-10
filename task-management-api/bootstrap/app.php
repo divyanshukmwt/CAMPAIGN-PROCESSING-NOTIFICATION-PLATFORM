@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\SecurityHeadersMiddleware;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -28,8 +29,11 @@ return Application::configure(basePath: dirname(__DIR__))
         // get session cookies + CSRF protection on the api route group.
         $middleware->statefulApi();
 
-        // Apply the named "api" rate limiter to every API route.
+        // Apply the named "api" rate limiter and strict security headers to every API route.
         $middleware->throttleApi();
+        $middleware->appendToGroup('api', [
+            SecurityHeadersMiddleware::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         /*

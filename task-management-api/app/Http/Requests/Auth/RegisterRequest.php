@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Auth;
 
+use App\Enums\UserRole;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
 
 /**
@@ -19,10 +21,16 @@ class RegisterRequest extends FormRequest
 
     protected function prepareForValidation(): void
     {
-        $this->merge([
+        $merged = [
             'name' => is_string($this->name) ? trim($this->name) : $this->name,
             'email' => is_string($this->email) ? strtolower(trim($this->email)) : $this->email,
-        ]);
+        ];
+
+        if (is_string($this->role)) {
+            $merged['role'] = strtolower(trim($this->role));
+        }
+
+        $this->merge($merged);
     }
 
     /**
@@ -34,6 +42,8 @@ class RegisterRequest extends FormRequest
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'string', 'confirmed', Password::min(8)->letters()->numbers()],
+            'role' => ['sometimes', 'string', Rule::enum(UserRole::class)],
+            'dual_role' => ['sometimes', 'boolean'],
         ];
     }
 }

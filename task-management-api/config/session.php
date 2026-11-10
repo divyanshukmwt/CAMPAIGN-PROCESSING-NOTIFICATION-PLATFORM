@@ -230,4 +230,6 @@ return [
 
     'serialization' => 'json',
 
+    'idle_timeout' => (int) env('SESSION_IDLE_TIMEOUT', 900),
+
 ];

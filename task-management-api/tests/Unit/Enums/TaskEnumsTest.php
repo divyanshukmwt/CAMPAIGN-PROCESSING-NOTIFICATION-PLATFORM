@@ -4,6 +4,7 @@ namespace Tests\Unit\Enums;
 
 use App\Enums\TaskPriority;
 use App\Enums\TaskStatus;
+use App\Enums\UserRole;
 use PHPUnit\Framework\TestCase;
 
 class TaskEnumsTest extends TestCase
@@ -21,10 +22,17 @@ class TaskEnumsTest extends TestCase
         $this->assertSame(TaskPriority::Medium, TaskPriority::DEFAULT);
     }
 
+    public function test_user_role_values_and_default(): void
+    {
+        $this->assertSame(['admin', 'user'], UserRole::values());
+        $this->assertSame(UserRole::User, UserRole::DEFAULT);
+    }
+
     public function test_invalid_values_are_rejected(): void
     {
         $this->assertNull(TaskStatus::tryFrom('Done'));
         $this->assertNull(TaskPriority::tryFrom('Urgent'));
         $this->assertNull(TaskStatus::tryFrom('pending'));
+        $this->assertNull(UserRole::tryFrom('superadmin'));
     }
 }
