@@ -4,10 +4,12 @@ import { Router } from '@angular/router';
 import { catchError, throwError } from 'rxjs';
 import { AuthService } from '../../services/auth.service';
 import { NotificationService } from '../services/notification.service';
+import { TabLockService } from '../services/tab-lock.service';
 
 export const errorInterceptor: HttpInterceptorFn = (req, next) => {
   const notification = inject(NotificationService);
   const authService = inject(AuthService);
+  const tabLock = inject(TabLockService);
   const router = inject(Router);
 
   return next(req).pipe(
@@ -19,6 +21,10 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
         if (!req.url.endsWith('/api/user') && !req.url.endsWith('/api/login')) {
           void router.navigate(['/login']);
         }
+      }
+
+      if (error.status === 409 && error.error?.code === 'TAB_CONFLICT') {
+        tabLock.markConflictFromServer(error.error?.message);
       }
 
       if (!skipNotification) {
@@ -38,6 +44,11 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
             break;
           case 404:
             notification.error(apiMessage || 'The requested resource was not found.');
+            break;
+          case 409:
+            notification.error(
+              apiMessage || 'Active session is locked to another browser tab.',
+            );
             break;
           case 422:
             notification.error(apiMessage || 'Please correct the highlighted validation errors.');

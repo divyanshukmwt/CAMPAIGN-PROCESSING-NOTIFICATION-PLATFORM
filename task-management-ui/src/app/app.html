@@ -1,76 +1,142 @@
-<div class="app-shell">
-  <mat-toolbar class="app-toolbar" role="banner">
-    <div class="toolbar-container">
-      <a routerLink="/tasks" class="brand-link" aria-label="Task Management System Home">
-        <mat-icon aria-hidden="true">task_alt</mat-icon>
-        <span class="brand-title">{{ title() }}</span>
-      </a>
-
-      <nav class="toolbar-nav" aria-label="Primary navigation">
-        @if (authService.currentUser(); as user) {
-          <a
-            mat-button
-            routerLink="/tasks"
-            routerLinkActive="active-link"
-            [routerLinkActiveOptions]="{ exact: true }"
-            data-testid="nav-tasks-link"
-          >
-            <mat-icon aria-hidden="true">view_list</mat-icon>
-            <span>Tasks</span>
-          </a>
-          <a
-            mat-flat-button
-            routerLink="/tasks/new"
-            routerLinkActive="active-link"
-            class="new-task-btn"
-            data-testid="nav-new-task-link"
-          >
-            <mat-icon aria-hidden="true">add</mat-icon>
-            <span>New Task</span>
-          </a>
-          <span class="user-chip" data-testid="nav-user-name">
-            <mat-icon aria-hidden="true">account_circle</mat-icon>
-            <span>{{ user.name }}</span>
-          </span>
-          <button
-            mat-button
-            type="button"
-            (click)="logout()"
-            aria-label="Sign out"
-            data-testid="nav-logout-btn"
-          >
-            <mat-icon aria-hidden="true">logout</mat-icon>
-            <span>Logout</span>
-          </button>
-        } @else {
-          <a
-            mat-button
-            routerLink="/login"
-            routerLinkActive="active-link"
-            data-testid="nav-login-link"
-          >
-            <mat-icon aria-hidden="true">login</mat-icon>
-            <span>Sign In</span>
-          </a>
-          <a
-            mat-flat-button
-            routerLink="/register"
-            routerLinkActive="active-link"
-            data-testid="nav-register-link"
-          >
-            <mat-icon aria-hidden="true">person_add</mat-icon>
-            <span>Register</span>
-          </a>
-        }
-      </nav>
+@if (tabLock.isDuplicateTab()) {
+  <section
+    class="security-lockout-overlay"
+    role="alertdialog"
+    aria-labelledby="lockout-heading"
+    aria-describedby="lockout-description"
+    data-testid="duplicate-tab-lockout"
+  >
+    <div class="security-lockout-card">
+      <div class="lockout-icon-wrap">
+        <mat-icon aria-hidden="true">gpp_bad</mat-icon>
+      </div>
+      <h1 id="lockout-heading" class="lockout-title">
+        Session Active in Another Tab
+      </h1>
+      <p id="lockout-description" class="lockout-message" data-testid="duplicate-tab-message">
+        {{ tabLock.lockReason() || 'For your security, this application cannot be opened in multiple tabs simultaneously. This duplicate tab has been stopped.' }}
+      </p>
+      <div class="lockout-meta">
+        <span>Security Policy: Single-Tab Session Enforcement</span>
+      </div>
     </div>
-  </mat-toolbar>
+  </section>
+} @else {
+  <div class="app-shell">
+    <mat-toolbar class="app-toolbar" role="banner">
+      <div class="toolbar-container">
+        <a routerLink="/tasks" class="brand-link" aria-label="Task Management System Home">
+          <mat-icon aria-hidden="true">task_alt</mat-icon>
+          <span class="brand-title">{{ title() }}</span>
+        </a>
 
-  <main class="app-content" role="main">
-    <router-outlet />
-  </main>
+        <nav class="toolbar-nav" aria-label="Primary navigation">
+          @if (authService.currentUser(); as user) {
+            <a
+              mat-button
+              routerLink="/tasks"
+              routerLinkActive="active-link"
+              [routerLinkActiveOptions]="{ exact: true }"
+              data-testid="nav-tasks-link"
+            >
+              <mat-icon aria-hidden="true">view_list</mat-icon>
+              <span>Tasks</span>
+            </a>
+            <a
+              mat-flat-button
+              routerLink="/tasks/new"
+              routerLinkActive="active-link"
+              class="new-task-btn"
+              data-testid="nav-new-task-link"
+            >
+              <mat-icon aria-hidden="true">add</mat-icon>
+              <span>New Task</span>
+            </a>
 
-  <footer class="app-footer" role="contentinfo">
-    <span>Task Management System &bull; Laravel REST API &amp; Angular Material</span>
-  </footer>
-</div>
+            <span
+              class="role-badge"
+              [class.role-admin]="authService.isAdmin()"
+              [class.role-user]="!authService.isAdmin()"
+              data-testid="nav-active-role-badge"
+            >
+              <mat-icon aria-hidden="true">
+                {{ authService.isAdmin() ? 'admin_panel_settings' : 'verified_user' }}
+              </mat-icon>
+              <span>{{ authService.isAdmin() ? 'ADMIN' : 'USER' }}</span>
+            </span>
+
+            @if (authService.hasDualRoles()) {
+              <button
+                mat-stroked-button
+                type="button"
+                class="switch-role-btn"
+                [disabled]="switchingRole()"
+                (click)="switchRole()"
+                data-testid="nav-switch-role-btn"
+              >
+                <mat-icon aria-hidden="true">swap_horiz</mat-icon>
+                <span>
+                  Switch to {{ authService.isAdmin() ? 'User' : 'Admin' }}
+                </span>
+              </button>
+            }
+
+            <span class="user-chip" data-testid="nav-user-name">
+              <mat-icon aria-hidden="true">account_circle</mat-icon>
+              <span>{{ user.name }}</span>
+            </span>
+            <button
+              mat-button
+              type="button"
+              (click)="logout()"
+              aria-label="Sign out"
+              data-testid="nav-logout-btn"
+            >
+              <mat-icon aria-hidden="true">logout</mat-icon>
+              <span>Logout</span>
+            </button>
+          } @else {
+            <a
+              mat-button
+              routerLink="/login"
+              routerLinkActive="active-link"
+              data-testid="nav-login-link"
+            >
+              <mat-icon aria-hidden="true">login</mat-icon>
+              <span>Sign In</span>
+            </a>
+            <a
+              mat-flat-button
+              routerLink="/register"
+              routerLinkActive="active-link"
+              data-testid="nav-register-link"
+            >
+              <mat-icon aria-hidden="true">person_add</mat-icon>
+              <span>Register</span>
+            </a>
+          }
+        </nav>
+      </div>
+    </mat-toolbar>
+
+    @if (idleTimeout.remainingWarningSeconds(); as seconds) {
+      <div class="idle-warning-banner" role="alert" data-testid="idle-warning-banner">
+        <mat-icon aria-hidden="true">schedule</mat-icon>
+        <span>
+          Security notice: Your session will automatically lock due to inactivity in {{ seconds }}s.
+        </span>
+        <button mat-button type="button" (click)="idleTimeout.recordActivity()">
+          Stay Signed In
+        </button>
+      </div>
+    }
+
+    <main class="app-content" role="main">
+      <router-outlet />
+    </main>
+
+    <footer class="app-footer" role="contentinfo">
+      <span>Task Management System &bull; Single-Tab Enforced RBAC Security</span>
+    </footer>
+  </div>
+}

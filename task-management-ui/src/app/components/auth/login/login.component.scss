@@ -8,7 +8,7 @@
 
 .auth-card {
   width: 100%;
-  max-width: 440px;
+  max-width: 460px;
   padding: 2rem;
   background: #ffffff;
 }
@@ -50,6 +50,75 @@
   font-size: 0.875rem;
   margin-bottom: 1rem;
   border: 1px solid #fecaca;
+}
+
+.role-selector {
+  margin-bottom: 1.25rem;
+}
+
+.role-selector-label {
+  display: block;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #334155;
+  margin-bottom: 0.5rem;
+}
+
+.role-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.625rem;
+}
+
+.role-option-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0.625rem 0.75rem;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 0.5rem;
+  background: #f8fafc;
+  color: #334155;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.15s ease;
+
+  mat-icon {
+    color: #64748b;
+    flex-shrink: 0;
+  }
+
+  &:hover {
+    border-color: #94a3b8;
+    background: #f1f5f9;
+  }
+
+  &.active {
+    border-color: #0284c7;
+    background: #f0f9ff;
+    color: #0f172a;
+    box-shadow: 0 0 0 1px #0284c7;
+
+    mat-icon {
+      color: #0284c7;
+    }
+  }
+}
+
+.role-option-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
+}
+
+.role-option-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.role-option-desc {
+  font-size: 0.7rem;
+  color: #64748b;
 }
 
 .form-fields {

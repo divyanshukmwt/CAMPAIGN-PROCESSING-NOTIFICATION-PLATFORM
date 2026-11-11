@@ -3,7 +3,7 @@
     <div class="auth-header">
       <mat-icon class="auth-icon" aria-hidden="true">lock_person</mat-icon>
       <h1 id="login-heading" class="auth-title">Sign In</h1>
-      <p class="auth-subtitle">Access your Task Management workspace</p>
+      <p class="auth-subtitle">Select your access role and authenticate</p>
     </div>
 
     @if (generalError()) {
@@ -14,6 +14,43 @@
     }
 
     <form [formGroup]="form" (ngSubmit)="onSubmit()" novalidate data-testid="login-form">
+      <div class="role-selector" role="radiogroup" aria-label="Sign in role">
+        <span class="role-selector-label">Sign in as:</span>
+        <div class="role-options">
+          <button
+            type="button"
+            class="role-option-btn"
+            [class.active]="selectedRole() === 'user'"
+            [attr.aria-checked]="selectedRole() === 'user'"
+            role="radio"
+            (click)="selectRole('user')"
+            data-testid="login-role-user"
+          >
+            <mat-icon aria-hidden="true">person</mat-icon>
+            <div class="role-option-text">
+              <span class="role-option-title">User</span>
+              <span class="role-option-desc">My &amp; assigned tasks</span>
+            </div>
+          </button>
+
+          <button
+            type="button"
+            class="role-option-btn"
+            [class.active]="selectedRole() === 'admin'"
+            [attr.aria-checked]="selectedRole() === 'admin'"
+            role="radio"
+            (click)="selectRole('admin')"
+            data-testid="login-role-admin"
+          >
+            <mat-icon aria-hidden="true">admin_panel_settings</mat-icon>
+            <div class="role-option-text">
+              <span class="role-option-title">Admin</span>
+              <span class="role-option-desc">All users &amp; task assignment</span>
+            </div>
+          </button>
+        </div>
+      </div>
+
       <div class="form-fields">
         <mat-form-field appearance="outline">
           <mat-label>Email Address</mat-label>
@@ -64,7 +101,7 @@
         [disabled]="submitting()"
         data-testid="login-submit-btn"
       >
-        {{ submitting() ? 'Signing in...' : 'Sign In' }}
+        {{ submitting() ? 'Signing in...' : 'Sign In as ' + (selectedRole() === 'admin' ? 'Admin' : 'User') }}
       </button>
     </form>
 

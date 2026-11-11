@@ -16,6 +16,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { Router, RouterLink } from '@angular/router';
 import { NotificationService } from '../../../core/services/notification.service';
+import { RegisterPayload, UserRole } from '../../../models/user';
 import { AuthService } from '../../../services/auth.service';
 
 const passwordMatchValidator: ValidatorFn = (group: AbstractControl): ValidationErrors | null => {
@@ -49,6 +50,8 @@ export class RegisterComponent {
   private readonly destroyRef = inject(DestroyRef);
 
   readonly submitting = signal<boolean>(false);
+  readonly selectedRole = signal<UserRole>('user');
+  readonly dualRole = signal<boolean>(false);
 
   readonly form = this.fb.nonNullable.group(
     {
@@ -60,6 +63,11 @@ export class RegisterComponent {
     { validators: passwordMatchValidator },
   );
 
+  selectAccountRole(role: UserRole, enableDual: boolean): void {
+    this.selectedRole.set(role);
+    this.dualRole.set(enableDual);
+  }
+
   onSubmit(): void {
     if (this.form.invalid) {
       this.form.markAllAsTouched();
@@ -69,13 +77,20 @@ export class RegisterComponent {
     this.submitting.set(true);
     const raw = this.form.getRawValue();
 
+    const payload: RegisterPayload = {
+      name: raw.name.trim(),
+      email: raw.email.trim(),
+      password: raw.password,
+      password_confirmation: raw.password_confirmation,
+    };
+
+    if (this.selectedRole() === 'admin' || this.dualRole()) {
+      payload.role = this.selectedRole();
+      payload.dual_role = true;
+    }
+
     this.authService
-      .register({
-        name: raw.name.trim(),
-        email: raw.email.trim(),
-        password: raw.password,
-        password_confirmation: raw.password_confirmation,
-      })
+      .register(payload)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (response) => {

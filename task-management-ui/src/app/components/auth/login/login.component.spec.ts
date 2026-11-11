@@ -53,10 +53,11 @@ describe('LoginComponent', () => {
     expect(authServiceMock.login).not.toHaveBeenCalled();
   });
 
-  it('should call AuthService.login and navigate to /tasks on success', () => {
+  it('should call AuthService.login with selected role and navigate to /tasks on success', () => {
     const router = TestBed.inject(Router);
     const navSpy = vi.spyOn(router, 'navigateByUrl').mockResolvedValue(true);
 
+    component.selectRole('admin');
     component.form.setValue({
       email: 'test@example.com',
       password: 'Password123',
@@ -67,22 +68,29 @@ describe('LoginComponent', () => {
     expect(authServiceMock.login).toHaveBeenCalledWith({
       email: 'test@example.com',
       password: 'Password123',
+      role: 'admin',
     });
     expect(notificationMock.success).toHaveBeenCalledWith('Login successful');
     expect(navSpy).toHaveBeenCalledWith('/tasks');
   });
 
-  it('should display general error message on 401 invalid credentials', () => {
+  it('should display general error message on 401 invalid credentials or 422 role error', () => {
     authServiceMock.login.mockReturnValueOnce(
       throwError(
         () =>
           new HttpErrorResponse({
-            status: 401,
-            error: { message: 'Invalid credentials' },
+            status: 422,
+            error: {
+              message: 'You do not have permission to sign in with the selected role.',
+              errors: {
+                role: ['You do not have permission to sign in with the selected role.'],
+              },
+            },
           }),
       ),
     );
 
+    component.selectRole('admin');
     component.form.setValue({
       email: 'test@example.com',
       password: 'WrongPassword123',
@@ -90,6 +98,8 @@ describe('LoginComponent', () => {
 
     component.onSubmit();
 
-    expect(component.generalError()).toBe('Invalid credentials');
+    expect(component.generalError()).toBe(
+      'You do not have permission to sign in with the selected role.',
+    );
   });
 });

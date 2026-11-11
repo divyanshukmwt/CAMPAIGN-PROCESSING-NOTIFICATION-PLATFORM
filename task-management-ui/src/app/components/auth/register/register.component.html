@@ -7,6 +7,43 @@
     </div>
 
     <form [formGroup]="form" (ngSubmit)="onSubmit()" novalidate data-testid="register-form">
+      <div class="role-selector" role="radiogroup" aria-label="Account role type">
+        <span class="role-selector-label">Account Role:</span>
+        <div class="role-options">
+          <button
+            type="button"
+            class="role-option-btn"
+            [class.active]="selectedRole() === 'user' && !dualRole()"
+            [attr.aria-checked]="selectedRole() === 'user' && !dualRole()"
+            role="radio"
+            (click)="selectAccountRole('user', false)"
+            data-testid="register-role-user"
+          >
+            <mat-icon aria-hidden="true">person</mat-icon>
+            <div class="role-option-text">
+              <span class="role-option-title">Standard User</span>
+              <span class="role-option-desc">User role only</span>
+            </div>
+          </button>
+
+          <button
+            type="button"
+            class="role-option-btn"
+            [class.active]="selectedRole() === 'admin' || dualRole()"
+            [attr.aria-checked]="selectedRole() === 'admin' || dualRole()"
+            role="radio"
+            (click)="selectAccountRole('admin', true)"
+            data-testid="register-role-admin"
+          >
+            <mat-icon aria-hidden="true">admin_panel_settings</mat-icon>
+            <div class="role-option-text">
+              <span class="role-option-title">Admin &amp; User</span>
+              <span class="role-option-desc">Dual-role with role switcher</span>
+            </div>
+          </button>
+        </div>
+      </div>
+
       <div class="form-fields">
         <mat-form-field appearance="outline">
           <mat-label>Full Name</mat-label>

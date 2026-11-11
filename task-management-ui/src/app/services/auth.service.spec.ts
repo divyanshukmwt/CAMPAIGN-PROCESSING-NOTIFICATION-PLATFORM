@@ -13,9 +13,14 @@ describe('AuthService', () => {
     id: 1,
     name: 'Test User',
     email: 'test@example.com',
+    roles: ['admin', 'user'],
+    active_role: 'user',
   };
 
   beforeEach(() => {
+    sessionStorage.clear();
+    localStorage.clear();
+
     TestBed.configureTestingModule({
       providers: [AuthService, provideHttpClient(), provideHttpClientTesting()],
     });
@@ -26,13 +31,15 @@ describe('AuthService', () => {
 
   afterEach(() => {
     httpMock.verify();
+    sessionStorage.clear();
+    localStorage.clear();
   });
 
-  it('should request CSRF cookie then POST /api/login and store currentUser', () => {
+  it('should request CSRF cookie then POST /api/login and store currentUser and tab_token', () => {
     let loggedInUser: User | undefined;
 
     service
-      .login({ email: 'test@example.com', password: 'Password123' })
+      .login({ email: 'test@example.com', password: 'Password123', role: 'user' })
       .subscribe((res) => (loggedInUser = res.user));
 
     const csrfReq = httpMock.expectOne(`${environment.baseUrl}/sanctum/csrf-cookie`);
@@ -44,15 +51,39 @@ describe('AuthService', () => {
     expect(loginReq.request.body).toEqual({
       email: 'test@example.com',
       password: 'Password123',
+      role: 'user',
     });
     loginReq.flush({
       message: 'Login successful',
       user: sampleUser,
+      tab_token: 'tab-token-xyz',
     });
 
     expect(loggedInUser).toEqual(sampleUser);
     expect(service.currentUser()).toEqual(sampleUser);
     expect(service.isAuthenticated()).toBe(true);
+    expect(service.hasDualRoles()).toBe(true);
+    expect(service.isAdmin()).toBe(false);
+    expect(sessionStorage.getItem('tms_tab_token')).toBe('tab-token-xyz');
+  });
+
+  it('should switch active role via POST /api/auth/switch-role', () => {
+    service.currentUser.set(sampleUser);
+
+    service.switchRole('admin').subscribe();
+
+    const switchReq = httpMock.expectOne(`${environment.apiUrl}/auth/switch-role`);
+    expect(switchReq.request.method).toBe('POST');
+    expect(switchReq.request.body).toEqual({ role: 'admin' });
+    switchReq.flush({
+      message: 'Role switched successfully',
+      user: { ...sampleUser, active_role: 'admin' },
+      tab_token: 'rotated-tab-token',
+    });
+
+    expect(service.activeRole()).toBe('admin');
+    expect(service.isAdmin()).toBe(true);
+    expect(sessionStorage.getItem('tms_tab_token')).toBe('rotated-tab-token');
   });
 
   it('should request CSRF cookie then POST /api/register and store currentUser', () => {

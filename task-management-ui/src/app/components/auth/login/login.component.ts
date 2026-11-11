@@ -9,6 +9,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { NotificationService } from '../../../core/services/notification.service';
+import { UserRole } from '../../../models/user';
 import { AuthService } from '../../../services/auth.service';
 
 @Component({
@@ -35,11 +36,17 @@ export class LoginComponent {
 
   readonly submitting = signal<boolean>(false);
   readonly generalError = signal<string | null>(null);
+  readonly selectedRole = signal<UserRole>('user');
 
   readonly form = this.fb.nonNullable.group({
     email: ['', [Validators.required, Validators.email]],
     password: ['', [Validators.required]],
   });
+
+  selectRole(role: UserRole): void {
+    this.selectedRole.set(role);
+    this.generalError.set(null);
+  }
 
   onSubmit(): void {
     if (this.form.invalid) {
@@ -55,6 +62,7 @@ export class LoginComponent {
       .login({
         email: payload.email.trim(),
         password: payload.password,
+        role: this.selectedRole(),
       })
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
@@ -68,6 +76,9 @@ export class LoginComponent {
           this.submitting.set(false);
           if (err.status === 422 && err.error?.errors) {
             const errors = err.error.errors as Record<string, string[]>;
+            if (errors['role']?.length) {
+              this.generalError.set(errors['role'][0]);
+            }
             for (const [field, messages] of Object.entries(errors)) {
               const control = this.form.get(field);
               if (control && messages.length > 0) {
