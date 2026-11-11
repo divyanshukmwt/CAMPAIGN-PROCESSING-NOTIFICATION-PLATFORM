@@ -161,10 +161,11 @@ All task endpoints require authentication. Each user only sees and manages **the
 | Method | Endpoint | Description | Success |
 |---|---|---|---|
 | GET | `/health` | API and database health check (public) | `200` |
-| GET | `/tasks` | List tasks, newest first (optional `?search=` by title) | `200` array |
-| GET | `/tasks/{id}` | Get a task | `200` object |
-| POST | `/tasks` | Create a task | `201` |
-| PUT / PATCH | `/tasks/{id}` | Update a task (partial updates allowed) | `200` |
+| GET | `/users` | List users for task assignment and filtering (Admin role only) | `200` array |
+| GET | `/tasks` | List tasks, newest first (optional `?search=` by title, `?user_id=` for Admin) | `200` array |
+| GET | `/tasks/{id}` | Get a task (includes `created_by`, `assigned_by`, `assigned_to`) | `200` object |
+| POST | `/tasks` | Create a task (Admin may specify `assigned_to_user_id`) | `201` |
+| PUT / PATCH | `/tasks/{id}` | Update a task or reassign (`assigned_to_user_id` for Admin) | `200` |
 | DELETE | `/tasks/{id}` | Delete a task | `200` |
 
 ### Task fields

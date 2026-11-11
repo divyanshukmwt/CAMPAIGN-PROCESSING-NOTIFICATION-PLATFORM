@@ -18,11 +18,20 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 interface TaskRepositoryInterface
 {
     /**
-     * Tasks owned by the given user, newest first, optionally filtered by a title search term.
+     * Tasks created by or assigned to the given user, newest first,
+     * optionally filtered by a title search term.
      *
      * @return Collection<int, Task>
      */
     public function allForUser(User $user, ?string $search = null): Collection;
+
+    /**
+     * All tasks across all users (for Admin role), newest first,
+     * optionally filtered by title search term and/or user ID.
+     *
+     * @return Collection<int, Task>
+     */
+    public function allForAdmin(?string $search = null, ?int $filterUserId = null): Collection;
 
     public function find(int $id): ?Task;
 

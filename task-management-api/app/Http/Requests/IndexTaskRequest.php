@@ -7,7 +7,7 @@ namespace App\Http\Requests;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
- * Validates query parameters for listing tasks (GET /api/tasks?search=...).
+ * Validates query parameters for listing tasks (GET /api/tasks?search=...&user_id=...).
  */
 class IndexTaskRequest extends FormRequest
 {
@@ -23,6 +23,7 @@ class IndexTaskRequest extends FormRequest
     {
         return [
             'search' => ['nullable', 'string', 'max:255'],
+            'user_id' => ['nullable', 'integer', 'exists:users,id'],
         ];
     }
 
@@ -34,5 +35,15 @@ class IndexTaskRequest extends FormRequest
         $term = trim((string) $this->validated('search', ''));
 
         return $term === '' ? null : $term;
+    }
+
+    /**
+     * Optional user ID filter (respected when the user is acting as Admin).
+     */
+    public function filterUserId(): ?int
+    {
+        $userId = $this->validated('user_id');
+
+        return $userId !== null ? (int) $userId : null;
     }
 }

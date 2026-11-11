@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\HealthController;
 use App\Http\Controllers\Api\TaskController;
+use App\Http\Controllers\Api\UserController;
 use App\Http\Middleware\EnsureSingleTabSession;
 use Illuminate\Support\Facades\Route;
 
@@ -18,7 +19,8 @@ Route::middleware(['auth:sanctum', EnsureSingleTabSession::class])->group(functi
     Route::post('/logout', [AuthController::class, 'logout'])->name('auth.logout');
     Route::get('/user', [AuthController::class, 'user'])->name('auth.user');
     Route::post('/auth/switch-role', [AuthController::class, 'switchRole'])->name('auth.switch-role');
+    Route::get('/users', [UserController::class, 'index'])->name('users.index');
 
-    // Task CRUD — scoped to the authenticated user via TaskPolicy
+    // Task CRUD — scoped to the authenticated user/role via TaskPolicy
     Route::apiResource('tasks', TaskController::class);
 });

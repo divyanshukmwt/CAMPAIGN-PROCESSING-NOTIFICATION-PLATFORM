@@ -31,7 +31,19 @@ class TasksTableSchemaTest extends TestCase
     {
         $this->assertTrue(Schema::hasTable('tasks'));
         $this->assertEqualsCanonicalizing(
-            ['id', 'user_id', 'title', 'description', 'status', 'priority', 'due_date', 'created_at', 'updated_at'],
+            [
+                'id',
+                'user_id',
+                'assigned_to_user_id',
+                'assigned_by_user_id',
+                'title',
+                'description',
+                'status',
+                'priority',
+                'due_date',
+                'created_at',
+                'updated_at',
+            ],
             Schema::getColumnListing('tasks')
         );
     }

@@ -16,7 +16,7 @@ use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\Gate;
 
 /**
- * REST endpoints for tasks (authenticated; users only see their own tasks).
+ * REST endpoints for tasks.
  *
  * Thin controller: validation is handled by Form Requests, authorisation by
  * TaskPolicy and business logic by TaskService (injected via the constructor).
@@ -28,17 +28,22 @@ class TaskController extends Controller
     ) {}
 
     /**
-     * GET /api/tasks — the user's tasks, newest first. Optional ?search= filters by title.
+     * GET /api/tasks — tasks visible to the authenticated user, newest first.
+     * Optional ?search= filters by title; optional ?user_id= filters by user (Admin only).
      */
     public function index(IndexTaskRequest $request): AnonymousResourceCollection
     {
         return TaskResource::collection(
-            $this->taskService->getAllTasks($request->user(), $request->searchTerm())
+            $this->taskService->getAllTasks(
+                $request->user(),
+                $request->searchTerm(),
+                $request->filterUserId(),
+            )
         );
     }
 
     /**
-     * POST /api/tasks — create a task owned by the authenticated user.
+     * POST /api/tasks — create a task (Admin may also assign to another user).
      */
     public function store(StoreTaskRequest $request): JsonResponse
     {
@@ -57,6 +62,8 @@ class TaskController extends Controller
     {
         Gate::authorize('view', $task);
 
+        $task->loadMissing(['user', 'assignee', 'assigner']);
+
         return new TaskResource($task);
     }
 
@@ -66,7 +73,7 @@ class TaskController extends Controller
      */
     public function update(UpdateTaskRequest $request, Task $task): JsonResponse
     {
-        $task = $this->taskService->updateTask($task, $request->validated());
+        $task = $this->taskService->updateTask($task, $request->validated(), $request->user());
 
         return response()->json([
             'message' => 'Task updated successfully',

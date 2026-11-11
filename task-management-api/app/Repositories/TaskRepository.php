@@ -7,6 +7,7 @@ namespace App\Repositories;
 use App\Contracts\TaskRepositoryInterface;
 use App\Models\Task;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 
 /**
@@ -16,12 +17,32 @@ class TaskRepository implements TaskRepositoryInterface
 {
     public function allForUser(User $user, ?string $search = null): Collection
     {
-        // Equivalent SQL: SELECT * FROM tasks WHERE user_id = ? [AND title LIKE ?]
-        //                 ORDER BY created_at DESC, id DESC
         return Task::query()
-            ->where('user_id', $user->id)
-            ->when($search !== null && $search !== '', function ($query) use ($search) {
-                // Escape LIKE wildcards so user input is matched literally (value is bound, never concatenated).
+            ->with(['user', 'assignee', 'assigner'])
+            ->where(function (Builder $query) use ($user): void {
+                $query->where('user_id', $user->id)
+                    ->orWhere('assigned_to_user_id', $user->id);
+            })
+            ->when($search !== null && $search !== '', function (Builder $query) use ($search): void {
+                $escaped = addcslashes((string) $search, '\\%_');
+                $query->where('title', 'like', '%'.$escaped.'%');
+            })
+            ->latest()
+            ->latest('id')
+            ->get();
+    }
+
+    public function allForAdmin(?string $search = null, ?int $filterUserId = null): Collection
+    {
+        return Task::query()
+            ->with(['user', 'assignee', 'assigner'])
+            ->when($filterUserId !== null, function (Builder $query) use ($filterUserId): void {
+                $query->where(function (Builder $sub) use ($filterUserId): void {
+                    $sub->where('user_id', $filterUserId)
+                        ->orWhere('assigned_to_user_id', $filterUserId);
+                });
+            })
+            ->when($search !== null && $search !== '', function (Builder $query) use ($search): void {
                 $escaped = addcslashes((string) $search, '\\%_');
                 $query->where('title', 'like', '%'.$escaped.'%');
             })
@@ -32,24 +53,50 @@ class TaskRepository implements TaskRepositoryInterface
 
     public function find(int $id): ?Task
     {
-        return Task::query()->find($id);
+        return Task::query()->with(['user', 'assignee', 'assigner'])->find($id);
     }
 
     public function findOrFail(int $id): Task
     {
-        return Task::query()->findOrFail($id);
+        return Task::query()->with(['user', 'assignee', 'assigner'])->findOrFail($id);
     }
 
     public function create(User $owner, array $data): Task
     {
-        return $owner->tasks()->create($data)->refresh();
+        $assignedToUserId = isset($data['assigned_to_user_id'])
+            ? (int) $data['assigned_to_user_id']
+            : $owner->id;
+
+        $assignedByUserId = isset($data['assigned_by_user_id'])
+            ? (int) $data['assigned_by_user_id']
+            : $owner->id;
+
+        $task = $owner->tasks()->make($data);
+        $task->forceFill([
+            'assigned_to_user_id' => $assignedToUserId,
+            'assigned_by_user_id' => $assignedByUserId,
+        ])->save();
+
+        return $task->refresh()->load(['user', 'assignee', 'assigner']);
     }
 
     public function update(Task $task, array $data): Task
     {
-        $task->update($data);
+        $assignmentUpdates = [];
+        if (array_key_exists('assigned_to_user_id', $data) && $data['assigned_to_user_id'] !== null) {
+            $assignmentUpdates['assigned_to_user_id'] = (int) $data['assigned_to_user_id'];
+        }
+        if (array_key_exists('assigned_by_user_id', $data) && $data['assigned_by_user_id'] !== null) {
+            $assignmentUpdates['assigned_by_user_id'] = (int) $data['assigned_by_user_id'];
+        }
 
-        return $task->refresh();
+        $task->fill($data);
+        if ($assignmentUpdates !== []) {
+            $task->forceFill($assignmentUpdates);
+        }
+        $task->save();
+
+        return $task->refresh()->load(['user', 'assignee', 'assigner']);
     }
 
     public function delete(Task $task): bool

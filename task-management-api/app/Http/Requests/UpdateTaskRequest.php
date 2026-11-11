@@ -19,14 +19,23 @@ use Illuminate\Validation\Rule;
 class UpdateTaskRequest extends FormRequest
 {
     /**
-     * Only the task owner may update it (TaskPolicy::update). Runs before
-     * validation so other users get 403 rather than validation details.
+     * Only the task owner/assignee or an active Admin may update it (TaskPolicy::update).
+     * Reassigning a task to another user requires the active Admin role (TaskPolicy::assign).
      */
     public function authorize(): bool
     {
         $task = $this->route('task');
+        $user = $this->user();
 
-        return $task instanceof Task && ($this->user()?->can('update', $task) ?? false);
+        if (! $task instanceof Task || $user === null || ! $user->can('update', $task)) {
+            return false;
+        }
+
+        if ($this->filled('assigned_to_user_id') && (int) $this->input('assigned_to_user_id') !== $user->id) {
+            return $user->can('assign', Task::class);
+        }
+
+        return true;
     }
 
     /**
@@ -40,6 +49,7 @@ class UpdateTaskRequest extends FormRequest
             'status' => ['sometimes', 'required', Rule::enum(TaskStatus::class)],
             'priority' => ['sometimes', 'required', Rule::enum(TaskPriority::class)],
             'due_date' => ['sometimes', 'nullable', 'date'],
+            'assigned_to_user_id' => ['sometimes', 'nullable', 'integer', 'exists:users,id'],
         ];
     }
 

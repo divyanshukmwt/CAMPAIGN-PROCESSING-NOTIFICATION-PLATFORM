@@ -17,7 +17,16 @@ class StoreTaskRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->can('create', Task::class) ?? false;
+        $user = $this->user();
+        if ($user === null || ! $user->can('create', Task::class)) {
+            return false;
+        }
+
+        if ($this->filled('assigned_to_user_id') && (int) $this->input('assigned_to_user_id') !== $user->id) {
+            return $user->can('assign', Task::class);
+        }
+
+        return true;
     }
 
     /**
@@ -31,6 +40,7 @@ class StoreTaskRequest extends FormRequest
             'status' => ['required', Rule::enum(TaskStatus::class)],
             'priority' => ['required', Rule::enum(TaskPriority::class)],
             'due_date' => ['nullable', 'date'],
+            'assigned_to_user_id' => ['sometimes', 'nullable', 'integer', 'exists:users,id'],
         ];
     }
 

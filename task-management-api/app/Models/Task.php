@@ -17,6 +17,8 @@ use Illuminate\Support\Carbon;
  *
  * @property int $id
  * @property int $user_id
+ * @property int|null $assigned_to_user_id
+ * @property int|null $assigned_by_user_id
  * @property string $title
  * @property string|null $description
  * @property TaskStatus $status
@@ -24,6 +26,9 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $due_date
  * @property Carbon $created_at
  * @property Carbon $updated_at
+ * @property-read User|null $user
+ * @property-read User|null $assignee
+ * @property-read User|null $assigner
  */
 class Task extends Model
 {
@@ -32,6 +37,8 @@ class Task extends Model
 
     /**
      * Only these attributes may be mass-assigned.
+     * Ownership (`user_id`) and assignment (`assigned_to_user_id`, `assigned_by_user_id`)
+     * are assigned explicitly by the service/repository layer.
      *
      * @var list<string>
      */
@@ -60,6 +67,8 @@ class Task extends Model
     {
         return [
             'user_id' => 'integer',
+            'assigned_to_user_id' => 'integer',
+            'assigned_by_user_id' => 'integer',
             'status' => TaskStatus::class,
             'priority' => TaskPriority::class,
             'due_date' => 'date:Y-m-d',
@@ -67,13 +76,32 @@ class Task extends Model
     }
 
     /**
-     * The user who owns this task. `user_id` is intentionally not fillable:
-     * ownership is assigned by the service layer, never from request input.
+     * The user who created/owns this task (`created_by`).
      *
      * @return BelongsTo<User, $this>
      */
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    /**
+     * The user to whom this task is assigned (`assigned_to`).
+     *
+     * @return BelongsTo<User, $this>
+     */
+    public function assignee(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'assigned_to_user_id');
+    }
+
+    /**
+     * The user who assigned this task (`assigned_by`).
+     *
+     * @return BelongsTo<User, $this>
+     */
+    public function assigner(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'assigned_by_user_id');
     }
 }
