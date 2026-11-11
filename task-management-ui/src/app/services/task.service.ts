@@ -16,11 +16,14 @@ export class TaskService {
   private readonly http = inject(HttpClient);
   private readonly apiUrl = `${environment.apiUrl}/tasks`;
 
-  getTasks(search?: string): Observable<Task[]> {
+  getTasks(search?: string, userId?: number | null): Observable<Task[]> {
     let params = new HttpParams();
     const trimmed = search?.trim();
     if (trimmed) {
       params = params.set('search', trimmed);
+    }
+    if (userId !== undefined && userId !== null) {
+      params = params.set('user_id', String(userId));
     }
     return this.http.get<Task[]>(this.apiUrl, { params });
   }

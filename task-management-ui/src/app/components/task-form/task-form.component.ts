@@ -18,6 +18,8 @@ import {
   TaskPriority,
   TaskStatus,
 } from '../../models/task';
+import { User } from '../../models/user';
+import { AuthService } from '../../services/auth.service';
 import { TaskService } from '../../services/task.service';
 
 @Component({
@@ -39,6 +41,7 @@ import { TaskService } from '../../services/task.service';
 export class TaskFormComponent implements OnInit {
   private readonly fb = inject(FormBuilder);
   private readonly taskService = inject(TaskService);
+  protected readonly authService = inject(AuthService);
   private readonly notification = inject(NotificationService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
@@ -52,6 +55,8 @@ export class TaskFormComponent implements OnInit {
   readonly loadingTask = signal<boolean>(false);
   readonly submitting = signal<boolean>(false);
   readonly loadError = signal<string | null>(null);
+  readonly users = signal<User[]>([]);
+  readonly selectedAssigneeId = signal<number | null>(null);
 
   readonly form = this.fb.nonNullable.group({
     title: ['', [Validators.required, Validators.maxLength(255)]],
@@ -62,6 +67,16 @@ export class TaskFormComponent implements OnInit {
   });
 
   ngOnInit(): void {
+    if (this.authService.isAdmin()) {
+      this.authService
+        .getUsers()
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe({
+          next: (list) => this.users.set(list),
+          error: () => this.users.set([]),
+        });
+    }
+
     const idParam = this.route.snapshot.paramMap.get('id');
     if (idParam) {
       const parsedId = Number(idParam);
@@ -70,6 +85,10 @@ export class TaskFormComponent implements OnInit {
         this.fetchTask(parsedId);
       }
     }
+  }
+
+  selectAssignee(userId: number | null): void {
+    this.selectedAssigneeId.set(userId);
   }
 
   fetchTask(id: number): void {
@@ -88,6 +107,9 @@ export class TaskFormComponent implements OnInit {
             priority: task.priority,
             due_date: task.due_date ? task.due_date.slice(0, 10) : '',
           });
+          this.selectedAssigneeId.set(
+            task.assigned_to_user_id ?? task.assigned_to?.id ?? null,
+          );
           this.loadingTask.set(false);
         },
         error: (err) => {
@@ -112,6 +134,10 @@ export class TaskFormComponent implements OnInit {
       priority: raw.priority,
       due_date: raw.due_date ? raw.due_date : null,
     };
+
+    if (this.authService.isAdmin() && this.selectedAssigneeId() !== null) {
+      payload.assigned_to_user_id = this.selectedAssigneeId();
+    }
 
     const id = this.taskId();
     const request$ =

@@ -12,8 +12,9 @@ A full-stack task management application built with **Angular**, **Laravel** and
 - **Priorities** — Low, Medium, High.
 - **Due dates** — optional target completion date.
 - **Validation** — client-side and server-side validation with clear error messages.
-- **Authentication** — secure login/registration with Laravel Sanctum (cookie-based SPA authentication).
-- **Authorisation** — every user sees and manages only their own tasks.
+- **Authentication & RBAC** — secure cookie-based SPA authentication (Laravel Sanctum) with **Admin** and **User** role selection at login, dual-role accounts (`["admin", "user"]`), and live role switching (`Switch to Admin` / `Switch to User`).
+- **Task Assignment & Attribution** — Admins can view all users' tasks, create tasks for any user, and reassign user-created tasks to another user; every task shows **Created By**, **Assigned By**, and **Assigned To**.
+- **Single-Tab Session Security** — duplicate browser tabs are immediately detected and blocked (`BroadcastChannel` + `localStorage` heartbeat + server-side cryptographic `X-Tab-Token` binding, User-Agent fingerprinting, idle timeout auto-logout, and `Cache-Control: no-store` security headers).
 - **Responsive UI** — Angular Material interface with loading, empty and error states.
 - **Security hardening** — explicit CORS origins, rate limiting (API, login, registration), security audit logging, centralised JSON error handling.
 

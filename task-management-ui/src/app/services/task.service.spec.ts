@@ -53,6 +53,14 @@ describe('TaskService', () => {
     req.flush([sampleTask]);
   });
 
+  it('should pass user_id query parameter when filtering by user in Admin view', () => {
+    service.getTasks('', 5).subscribe();
+
+    const req = httpMock.expectOne((r) => r.url === baseUrl && r.params.get('user_id') === '5');
+    expect(req.request.method).toBe('GET');
+    req.flush([sampleTask]);
+  });
+
   it('should fetch a single task via GET /api/tasks/:id', () => {
     let result: Task | undefined;
     service.getTask(1).subscribe((res) => (result = res));

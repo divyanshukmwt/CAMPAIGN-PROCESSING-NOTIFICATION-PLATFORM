@@ -1,13 +1,21 @@
 <section class="task-list-page" aria-labelledby="tasks-heading">
   <div class="page-header">
     <div>
-      <h1 id="tasks-heading" class="page-title">Tasks</h1>
-      <p class="page-subtitle">Manage, search, and track your project tasks</p>
+      <h1 id="tasks-heading" class="page-title">
+        {{ authService.isAdmin() ? 'All Users Tasks (Admin View)' : 'Tasks' }}
+      </h1>
+      <p class="page-subtitle">
+        {{
+          authService.isAdmin()
+            ? 'Inspect, assign, and manage tasks across all users'
+            : 'Manage, search, and track tasks created by or assigned to you'
+        }}
+      </p>
     </div>
 
     <a mat-flat-button routerLink="/tasks/new" class="create-btn" data-testid="create-task-btn">
       <mat-icon aria-hidden="true">add</mat-icon>
-      <span>Create Task</span>
+      <span>{{ authService.isAdmin() ? 'Create & Assign Task' : 'Create Task' }}</span>
     </a>
   </div>
 
@@ -37,6 +45,22 @@
           </button>
         }
       </mat-form-field>
+
+      @if (authService.isAdmin()) {
+        <mat-form-field appearance="outline" class="user-filter-field" subscriptSizing="dynamic">
+          <mat-label>Filter by User</mat-label>
+          <mat-select
+            [value]="selectedUserId()"
+            (selectionChange)="onUserFilterChange($event.value)"
+            data-testid="admin-user-filter"
+          >
+            <mat-option [value]="null">All Users</mat-option>
+            @for (u of users(); track u.id) {
+              <mat-option [value]="u.id">{{ u.name }} ({{ u.email }})</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+      }
 
       <button
         mat-stroked-button
@@ -88,7 +112,7 @@
       <div class="table-responsive">
         <table mat-table [dataSource]="tasks()" class="tasks-table" data-testid="tasks-table">
           <ng-container matColumnDef="title">
-            <th mat-header-cell *matHeaderCellDef>Task</th>
+            <th mat-header-cell *matHeaderCellDef>Task &amp; Attribution</th>
             <td mat-cell *matCellDef="let task">
               <a [routerLink]="['/tasks', task.id]" class="task-title-link" data-testid="task-title-link">
                 {{ task.title }}
@@ -96,6 +120,17 @@
               @if (task.description) {
                 <p class="task-description">{{ task.description }}</p>
               }
+              <div class="task-attribution" data-testid="task-attribution">
+                <span class="attr-chip" data-testid="task-created-by">
+                  <strong>Created by:</strong> {{ task.created_by?.name || 'Self' }}
+                </span>
+                <span class="attr-chip" data-testid="task-assigned-by">
+                  <strong>Assigned by:</strong> {{ task.assigned_by?.name || task.created_by?.name || 'Self' }}
+                </span>
+                <span class="attr-chip attr-assignee" data-testid="task-assigned-to">
+                  <strong>Assigned to:</strong> {{ task.assigned_to?.name || task.created_by?.name || 'Self' }}
+                </span>
+              </div>
             </td>
           </ng-container>
 
@@ -143,7 +178,7 @@
               <a
                 mat-icon-button
                 [routerLink]="['/tasks', task.id, 'edit']"
-                matTooltip="Edit task"
+                matTooltip="Edit or assign task"
                 [attr.aria-label]="'Edit ' + task.title"
                 data-testid="edit-task-btn"
               >

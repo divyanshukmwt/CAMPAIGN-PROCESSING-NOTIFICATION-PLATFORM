@@ -92,6 +92,23 @@
             }
           </mat-form-field>
 
+          @if (authService.isAdmin()) {
+            <mat-form-field appearance="outline" class="full-width" data-testid="task-assignee-field">
+              <mat-label>Assign To User (Admin)</mat-label>
+              <mat-select
+                [value]="selectedAssigneeId()"
+                (selectionChange)="selectAssignee($event.value)"
+                data-testid="task-assignee-select"
+              >
+                <mat-option [value]="null">Assign to myself ({{ authService.currentUser()?.name }})</mat-option>
+                @for (u of users(); track u.id) {
+                  <mat-option [value]="u.id">{{ u.name }} ({{ u.email }})</mat-option>
+                }
+              </mat-select>
+              <mat-hint>Select which user this task should be assigned to</mat-hint>
+            </mat-form-field>
+          }
+
           <mat-form-field appearance="outline" class="full-width">
             <mat-label>Due Date</mat-label>
             <input

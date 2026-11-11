@@ -42,6 +42,10 @@
   min-width: 240px;
 }
 
+.user-filter-field {
+  min-width: 240px;
+}
+
 .state-card {
   padding: 3rem 1.5rem;
   display: flex;
@@ -120,6 +124,39 @@
   -webkit-line-clamp: 1;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+.task-attribution {
+  margin-top: 0.4rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.attr-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 0.375rem;
+  background: #f1f5f9;
+  color: #475569;
+  font-size: 0.72rem;
+
+  strong {
+    color: #334155;
+    font-weight: 600;
+  }
+
+  &.attr-assignee {
+    background: #f0f9ff;
+    color: #0369a1;
+    border: 1px solid #bae6fd;
+
+    strong {
+      color: #075985;
+    }
+  }
 }
 
 .badge {

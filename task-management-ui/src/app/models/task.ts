@@ -6,6 +6,12 @@ export const TASK_STATUSES: readonly TaskStatus[] = ['Pending', 'In Progress', '
 
 export const TASK_PRIORITIES: readonly TaskPriority[] = ['Low', 'Medium', 'High'];
 
+export interface TaskUserSummary {
+  id: number;
+  name: string;
+  email: string;
+}
+
 export interface Task {
   id: number;
   title: string;
@@ -13,6 +19,10 @@ export interface Task {
   status: TaskStatus;
   priority: TaskPriority;
   due_date: string | null;
+  assigned_to_user_id?: number | null;
+  created_by?: TaskUserSummary | null;
+  assigned_to?: TaskUserSummary | null;
+  assigned_by?: TaskUserSummary | null;
   created_at?: string;
   updated_at?: string;
 }
@@ -23,6 +33,7 @@ export interface TaskPayload {
   status?: TaskStatus;
   priority?: TaskPriority;
   due_date?: string | null;
+  assigned_to_user_id?: number | null;
 }
 
 export interface TaskMutationResponse {

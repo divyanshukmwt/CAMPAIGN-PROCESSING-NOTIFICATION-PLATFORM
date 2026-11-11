@@ -1,5 +1,5 @@
 import { DatePipe } from '@angular/common';
-import { Component, DestroyRef, OnInit, inject, signal } from '@angular/core';
+import { Component, DestroyRef, OnInit, effect, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -9,12 +9,15 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatSelectModule } from '@angular/material/select';
 import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { RouterLink } from '@angular/router';
 import { debounceTime, distinctUntilChanged } from 'rxjs';
 import { NotificationService } from '../../core/services/notification.service';
 import { Task, TaskPriority, TaskStatus } from '../../models/task';
+import { User } from '../../models/user';
+import { AuthService } from '../../services/auth.service';
 import { TaskService } from '../../services/task.service';
 import {
   ConfirmDialogComponent,
@@ -33,6 +36,7 @@ import {
     MatDialogModule,
     MatFormFieldModule,
     MatInputModule,
+    MatSelectModule,
     MatProgressSpinnerModule,
     MatTableModule,
     MatTooltipModule,
@@ -42,11 +46,14 @@ import {
 })
 export class TaskListComponent implements OnInit {
   private readonly taskService = inject(TaskService);
+  protected readonly authService = inject(AuthService);
   private readonly notification = inject(NotificationService);
   private readonly dialog = inject(MatDialog);
   private readonly destroyRef = inject(DestroyRef);
 
   readonly tasks = signal<Task[]>([]);
+  readonly users = signal<User[]>([]);
+  readonly selectedUserId = signal<number | null>(null);
   readonly loading = signal<boolean>(true);
   readonly error = signal<string | null>(null);
   readonly searchControl = new FormControl<string>('', { nonNullable: true });
@@ -59,7 +66,25 @@ export class TaskListComponent implements OnInit {
     'actions',
   ];
 
+  private viewInitialized = false;
+  private lastRoleVersion = this.authService.roleVersion();
+
+  constructor() {
+    effect(() => {
+      const version = this.authService.roleVersion();
+      if (this.viewInitialized && version !== this.lastRoleVersion) {
+        this.lastRoleVersion = version;
+        this.selectedUserId.set(null);
+        this.loadAdminUsersIfNeeded();
+        this.loadTasks();
+      }
+    });
+  }
+
   ngOnInit(): void {
+    this.viewInitialized = true;
+    this.lastRoleVersion = this.authService.roleVersion();
+    this.loadAdminUsersIfNeeded();
     this.loadTasks();
 
     this.searchControl.valueChanges
@@ -69,25 +94,48 @@ export class TaskListComponent implements OnInit {
       });
   }
 
+  loadAdminUsersIfNeeded(): void {
+    if (!this.authService.isAdmin()) {
+      this.users.set([]);
+      return;
+    }
+
+    this.authService
+      .getUsers()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (list) => this.users.set(list),
+        error: () => this.users.set([]),
+      });
+  }
+
+  onUserFilterChange(userId: number | null): void {
+    this.selectedUserId.set(userId);
+    this.loadTasks();
+  }
+
   loadTasks(search = this.searchControl.value): void {
     this.loading.set(true);
     this.error.set(null);
 
-    this.taskService
-      .getTasks(search)
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (tasks) => {
-          this.tasks.set(tasks);
-          this.loading.set(false);
-        },
-        error: (err) => {
-          const message =
-            err?.error?.message || 'Unable to load tasks. Please try again.';
-          this.error.set(message);
-          this.loading.set(false);
-        },
-      });
+    const userId = this.authService.isAdmin() ? this.selectedUserId() : null;
+    const request$ =
+      userId !== null
+        ? this.taskService.getTasks(search, userId)
+        : this.taskService.getTasks(search);
+
+    request$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: (tasks) => {
+        this.tasks.set(tasks);
+        this.loading.set(false);
+      },
+      error: (err) => {
+        const message =
+          err?.error?.message || 'Unable to load tasks. Please try again.';
+        this.error.set(message);
+        this.loading.set(false);
+      },
+    });
   }
 
   clearSearch(): void {

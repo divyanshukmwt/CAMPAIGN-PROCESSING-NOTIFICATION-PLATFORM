@@ -1,3 +1,5 @@
+import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { Subject, of, throwError } from 'rxjs';
@@ -28,6 +30,9 @@ describe('TaskListComponent', () => {
       status: 'In Progress',
       priority: 'High',
       due_date: '2026-03-20',
+      created_by: { id: 1, name: 'Admin Boss', email: 'admin@example.com' },
+      assigned_by: { id: 1, name: 'Admin Boss', email: 'admin@example.com' },
+      assigned_to: { id: 2, name: 'Alice User', email: 'alice@example.com' },
     },
     {
       id: 2,
@@ -36,6 +41,9 @@ describe('TaskListComponent', () => {
       status: 'Pending',
       priority: 'Medium',
       due_date: null,
+      created_by: { id: 2, name: 'Alice User', email: 'alice@example.com' },
+      assigned_by: { id: 2, name: 'Alice User', email: 'alice@example.com' },
+      assigned_to: { id: 2, name: 'Alice User', email: 'alice@example.com' },
     },
   ];
 
@@ -55,6 +63,8 @@ describe('TaskListComponent', () => {
       imports: [TaskListComponent],
       providers: [
         provideRouter([]),
+        provideHttpClient(),
+        provideHttpClientTesting(),
         { provide: TaskService, useValue: taskServiceMock },
         { provide: NotificationService, useValue: notificationMock },
       ],
@@ -77,7 +87,7 @@ describe('TaskListComponent', () => {
     fixture.detectChanges();
   });
 
-  it('should render the task table when tasks are returned', () => {
+  it('should render the task table and attribution metadata (Created by, Assigned by, Assigned to)', () => {
     fixture = TestBed.createComponent(TaskListComponent);
     component = fixture.componentInstance;
     fixture.detectChanges();
@@ -87,6 +97,9 @@ describe('TaskListComponent', () => {
     expect(rows.length).toBe(2);
     expect(compiled.textContent).toContain('Complete Laravel API');
     expect(compiled.textContent).toContain('Prepare Angular UI');
+    expect(compiled.textContent).toContain('Created by: Admin Boss');
+    expect(compiled.textContent).toContain('Assigned by: Admin Boss');
+    expect(compiled.textContent).toContain('Assigned to: Alice User');
   });
 
   it('should render empty state when no tasks exist', () => {

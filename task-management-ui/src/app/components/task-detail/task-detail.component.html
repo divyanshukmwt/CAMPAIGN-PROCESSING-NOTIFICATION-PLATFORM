@@ -68,7 +68,65 @@
         }
       </div>
 
+      @if (authService.isAdmin() && users().length > 0) {
+        <div class="detail-section assign-panel" data-testid="detail-admin-assign-panel">
+          <h2 class="section-heading">Admin Task Assignment</h2>
+          <div class="assign-controls">
+            <mat-form-field appearance="outline" class="assign-select-field" subscriptSizing="dynamic">
+              <mat-label>Assign To User</mat-label>
+              <mat-select
+                [value]="selectedAssigneeId()"
+                (selectionChange)="selectedAssigneeId.set($event.value)"
+                data-testid="detail-reassign-select"
+              >
+                @for (u of users(); track u.id) {
+                  <mat-option [value]="u.id">{{ u.name }} ({{ u.email }})</mat-option>
+                }
+              </mat-select>
+            </mat-form-field>
+
+            <button
+              mat-flat-button
+              type="button"
+              [disabled]="reassigning()"
+              (click)="reassignTask()"
+              data-testid="detail-reassign-btn"
+            >
+              <mat-icon aria-hidden="true">assignment_ind</mat-icon>
+              <span>{{ reassigning() ? 'Assigning...' : 'Assign User' }}</span>
+            </button>
+          </div>
+        </div>
+      }
+
       <dl class="metadata-grid">
+        <div class="metadata-item">
+          <dt>Created By</dt>
+          <dd data-testid="detail-created-by">
+            {{ currentTask.created_by?.name || 'Self' }}
+            @if (currentTask.created_by?.email) {
+              <span class="meta-sub">({{ currentTask.created_by?.email }})</span>
+            }
+          </dd>
+        </div>
+
+        <div class="metadata-item">
+          <dt>Assigned By</dt>
+          <dd data-testid="detail-assigned-by">
+            {{ currentTask.assigned_by?.name || currentTask.created_by?.name || 'Self' }}
+          </dd>
+        </div>
+
+        <div class="metadata-item">
+          <dt>Assigned To</dt>
+          <dd data-testid="detail-assigned-to">
+            {{ currentTask.assigned_to?.name || currentTask.created_by?.name || 'Self' }}
+            @if (currentTask.assigned_to?.email) {
+              <span class="meta-sub">({{ currentTask.assigned_to?.email }})</span>
+            }
+          </dd>
+        </div>
+
         <div class="metadata-item">
           <dt>Due Date</dt>
           <dd data-testid="detail-due-date">

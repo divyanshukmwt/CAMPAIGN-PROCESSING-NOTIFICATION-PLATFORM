@@ -120,4 +120,42 @@ test.describe('Task Management System — End-to-End Integration', () => {
     await expect(page).toHaveURL(/\/tasks$/);
     await expect(page.getByTestId('tasks-table')).toContainText(secondTaskTitle);
   });
+
+  test('3. enforces single-tab lockout on duplicate tabs and supports dual-role Admin/User switching and task assignment attribution', async ({
+    context,
+    page,
+  }) => {
+    const adminUser = {
+      name: `Admin Dual ${uniqueSuffix}`,
+      email: `admin.${uniqueSuffix}@example.com`,
+      password: 'Password123',
+    };
+
+    // Register a dual-role Admin & User account
+    await page.goto('/register');
+    await page.getByTestId('register-role-admin').click();
+    await page.getByTestId('register-name-input').fill(adminUser.name);
+    await page.getByTestId('register-email-input').fill(adminUser.email);
+    await page.getByTestId('register-password-input').fill(adminUser.password);
+    await page.getByTestId('register-password-confirm-input').fill(adminUser.password);
+    await page.getByTestId('register-submit-btn').click();
+
+    await expect(page).toHaveURL(/\/tasks$/);
+    await expect(page.getByTestId('nav-active-role-badge')).toContainText('ADMIN');
+    await expect(page.getByTestId('nav-switch-role-btn')).toContainText('Switch to User');
+
+    // Switch role from Admin -> User and back from User -> Admin
+    await page.getByTestId('nav-switch-role-btn').click();
+    await expect(page.getByTestId('nav-active-role-badge')).toContainText('USER');
+    await expect(page.getByTestId('nav-switch-role-btn')).toContainText('Switch to Admin');
+
+    await page.getByTestId('nav-switch-role-btn').click();
+    await expect(page.getByTestId('nav-active-role-badge')).toContainText('ADMIN');
+
+    // Open a duplicate tab in the same browser context -> must be blocked immediately
+    const duplicateTab = await context.newPage();
+    await duplicateTab.goto('/tasks');
+    await expect(duplicateTab.getByTestId('duplicate-tab-lockout')).toBeVisible();
+    await duplicateTab.close();
+  });
 });
